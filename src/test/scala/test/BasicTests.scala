@@ -1,15 +1,12 @@
 package test
 
-import org.junit.Test
-import org.junit.Assert._
+import org.scalatest.FunSuite
 import ast2._
-import org.antlr.v4.runtime.ANTLRInputStream
-import org.antlr.v4.runtime.CommonTokenStream
 
 /**
  * @author david
  */
-class BasicTests {
+class BasicTests extends FunSuite {
   
   def run(code: String) = {
     val filename = "test"
@@ -20,33 +17,30 @@ class BasicTests {
     ret
   }
 
-  @Test
-  def test_23464 = {
+  test ("1 + 2 = 3") { 
     val code = """
       def a = 1
       def b = 2
       add(a, b)
       """
     val ret = run(code)
-    assertEquals("3", ret.toString())
+    assert ("3" == ret.toString())
   }
   
-  @Test
-  def test_91262 = {
+  test ("Create a list") {
     val code = """
       cons(1, list(2))
       """
     val ret = run(code)
-    assertEquals("[1 2]", ret.toString())
+    assert ("[1 2]" == ret.toString())
   }
   
-  @Test
-  def test_23781 = {
+  test("Compute factorial") {
     val code = """
       def f = { x Int -> if eq(x, 2) then x else times(x, f(sub(x, 1))) }
       f(4)
       """
     val ret = run(code)
-    assertEquals("24", ret.toString())
+    assert ("24" == ret.toString())
   }
 }
