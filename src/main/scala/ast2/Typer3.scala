@@ -17,9 +17,9 @@ class TyvarGenerator(prefix: String) {
 object Typer3 {
   
   val numType = Tycon("Num", List())
-  val intType = Tycon("Int", List())
+  val intType = Tycon("Int", List()).is(numType)
   val stringType = Tycon("Str", List())
-  val floatType = Tycon("Float", List())
+  val floatType = Tycon("Float", List()).is(numType)
   val boolType = Tycon("Bool", List())
   val unitType = Tycon("Unit", List())
   

@@ -36,6 +36,11 @@ case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
 
 abstract class Ty {
   def repr: String
+  val isa = scala.collection.mutable.MutableList[Ty]()
+  def is(t: Ty) = {
+    isa += t
+    this
+  }
 }
 case class Tyfn(in: List[Ty], out: Ty) extends Ty {
   override def repr = "(" + in.map{_.repr}.mkString(",") + " -> " + out.repr + ")"

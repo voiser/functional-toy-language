@@ -428,7 +428,7 @@ object Codegen2 {
   
   def genclass(uf: CompilationUnitFunction) = {
     
-    println ("Generating class " + uf.className)
+    //println ("Generating class " + uf.className)
 
     val cw = new ClassWriter(0)
     cw.visit(V1_7, ACC_PUBLIC + ACC_SUPER, uf.slashedName, null, FUNC, null)

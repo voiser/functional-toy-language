@@ -87,37 +87,19 @@ object Main {
     
     val unit = new CompilationUnit(filename, module2, funcs, externs)
     
-    val bytes = Codegen2.codegen(unit)
-    
-    bytes
+    unit
+  }
+
+  def execute(module: String, bytes: List[(String, String, Array[Byte])]) = {
+	  val runtime = new Runtime()
+    bytes.foreach { x =>
+      runtime.register(x._1, x._2, x._3)
+    }
+    runtime.apply0(module + ".main") 
   }
   
   def main(args: Array[String]) {
 
-    val code = """
-
-module klan
-
-def f = {x Int -> 
-  if eq(x, 1) 
-    then x
-    else times(x, f(sub(x, 1)))
-}
-
-f(4)
-
-    """
-    
-    val filename = "test"
-    
-    val bytes = process(filename, code)
-    
-    val runtime = new Runtime()
-    bytes.foreach { x =>
-      runtime.register(x._1, x._2, x._3)
-    }
-    val ret = runtime.apply0("klan.main")
-    println("Returned " + ret)
   }
   
   def show(n: Node,code: String) {
