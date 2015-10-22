@@ -18,9 +18,10 @@ object Typer3 {
   
   val eqType = Tycon("Eq")
   val numType = Tycon("Num", List(), List(eqType))
-  val intType = Tycon("Int", List(), List(numType, eqType))
+  
+  val intType = Tycon("Int", List(), List(numType))
   val stringType = Tycon("Str", List(), List(eqType))
-  val floatType = Tycon("Float", List(), List(numType, eqType))
+  val floatType = Tycon("Float", List(), List(numType))
   val boolType = Tycon("Bool", List(), List(eqType))
   val unitType = Tycon("Unit")
   
@@ -69,7 +70,21 @@ object Typer3 {
     def repr = ""
   }
   
-  def isa(t1: Tycon, t2: Tycon) = t2.isa.contains(t1)
+  def isa(t1: Tycon, t2: Tycon) = {
+    def extract(t: List[Tycon], acc: List[Tycon]) : List[Tycon] = t match {
+      case x :: List(xs) =>
+        x :: extract(x.isa, List()) ++ acc
+        
+      case List(x) =>
+        x :: extract(x.isa, List())
+        
+      case List() =>
+        List()
+    }
+    
+    val all = t2 :: extract(t2.isa, List())
+    all.contains(t1)
+  }
   
   /**
    * 

@@ -43,4 +43,8 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert ("24" == ret.toString())
   }
+  
+  test("isa") {
+    Typer3.isa(Typer3.eqType, Typer3.intType)
+  }
 }

@@ -40,7 +40,7 @@ abstract class Ty {
 case class Tyfn(in: List[Ty], out: Ty) extends Ty {
   override def repr = "(" + in.map{_.repr}.mkString(",") + " -> " + out.repr + ")"
 }
-case class Tycon(name: String, types: List[Ty], isa: List[Ty]) extends Ty {
+case class Tycon(name: String, types: List[Ty], isa: List[Tycon]) extends Ty {
   override def repr = name + (if (types.size == 0) "" else types.map { _.repr}.mkString("<", ",", ">"))
 } 
 case class Tyvar(name: String) extends Ty {
