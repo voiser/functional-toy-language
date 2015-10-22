@@ -11,34 +11,25 @@ object Main {
     val a = Tyvar("a")
     val b = Tyvar("b")
     
+    val eq = Typer3.eqType
+    val num = Typer3.numType
     val int = Typer3.intType
     val float = Typer3.floatType
     val bool = Typer3.boolType
     val unit = Typer3.unitType
     
-    val listType = Tycon("List", List(a))
+    val listType = Tycon("List", List(a), List())
     
     env.put("true", "runtime/True", TypeScheme(List(), bool))
     env.put("false", "runtime/False", TypeScheme(List(), bool))
 
-    env.put("add$a", "runtime/add$a", TypeScheme(List(), Tyfn(List(int, int), int)))
-    env.put("add$b", "runtime/add$b", TypeScheme(List(), Tyfn(List(int, float), float)))
-    env.put("add$c", "runtime/add$c", TypeScheme(List(), Tyfn(List(float, int), float)))
-    env.put("add$d", "runtime/add$d", TypeScheme(List(), Tyfn(List(float, float), float)))
-    
-    env.put("sub$a", "runtime/sub$a", TypeScheme(List(), Tyfn(List(int, int), int)))
-    env.put("sub$b", "runtime/sub$b", TypeScheme(List(), Tyfn(List(int, float), float)))
-    env.put("sub$c", "runtime/sub$c", TypeScheme(List(), Tyfn(List(float, int), float)))
-    env.put("sub$d", "runtime/sub$d", TypeScheme(List(), Tyfn(List(float, float), float)))
-
-    env.put("times$a", "runtime/times$a", TypeScheme(List(), Tyfn(List(int, int), int)))
-    env.put("times$b", "runtime/times$b", TypeScheme(List(), Tyfn(List(int, float), float)))
-    env.put("times$c", "runtime/times$c", TypeScheme(List(), Tyfn(List(float, int), float)))
-    env.put("times$d", "runtime/times$d", TypeScheme(List(), Tyfn(List(float, float), float)))
+    env.put("add", "runtime/add", TypeScheme(List(), Tyfn(List(num, num), num)))
+    env.put("sub", "runtime/sub", TypeScheme(List(), Tyfn(List(num, num), num)))
+    env.put("times", "runtime/times", TypeScheme(List(), Tyfn(List(num, num), num)))
     
     env.put("id", "runtime/id", TypeScheme(List(a), Tyfn(List(a), a)))
     env.put("do", "runtime/do_", TypeScheme(List(a, b), Tyfn(List(Tyfn(List(a), b), a), b)))
-    env.put("eq", "runtime/eq", TypeScheme(List(a), Tyfn(List(a, a), bool)))
+    env.put("eq", "runtime/eq", TypeScheme(List(), Tyfn(List(eq, eq), bool)))
     env.put("puts", "runtime/puts", TypeScheme(List(), Tyfn(List(a), unit)))
     
     env.put("list", "runtime/list_of", TypeScheme(List(a), Tyfn(List(a), listType)))
@@ -58,12 +49,12 @@ object Main {
     // Build the AST
     val module = new FirstVisitor(filename).visitFile(cst)
     module.main.name = "main"
-        
+
     // Type the AST
     Typer3.getType(rootEnv, module.main)
-    
-    //show(module.main, code)
-    
+
+    // show(module.main, code)
+        
     // Name all named functions
     // new FunctionNamerVisitor(module)
     new FunctionNamerVisitor2(null).visit(module.main)
@@ -109,7 +100,7 @@ object Main {
     
       def rep(s: String) {
         val position = n.position._1 + " Line " + n.position._2
-        val prefix = "  " * d + " " + s + " :: " + n.ty.repr 
+        val prefix = "  " * d + " " + s + " :: " + (if (n.ty != null) n.ty.repr else "(none yet)") 
         val infix = if (prefix.length() < 50) " " * (5 + (50 - prefix.length())) else "     "
         val suffix1 = "at " + position + " "
         val suffix2 = "in " + n.env
@@ -133,6 +124,12 @@ object Main {
         case NApply(name, params) =>
           rep("Apply " + name)
           params.foreach { x => show0(x, d+1) }
+          
+        case NIf(cond, exptrue, expfalse) =>
+          rep("If")
+          show0(cond, d+1)
+          show0(exptrue, d+1)
+          show0(expfalse, d+1)
                   
         case _ =>
           rep(n.toString())

@@ -36,16 +36,11 @@ case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
 
 abstract class Ty {
   def repr: String
-  val isa = scala.collection.mutable.MutableList[Ty]()
-  def is(t: Ty) = {
-    isa += t
-    this
-  }
 }
 case class Tyfn(in: List[Ty], out: Ty) extends Ty {
   override def repr = "(" + in.map{_.repr}.mkString(",") + " -> " + out.repr + ")"
 }
-case class Tycon(name: String, types: List[Ty]) extends Ty {
+case class Tycon(name: String, types: List[Ty], isa: List[Ty]) extends Ty {
   override def repr = name + (if (types.size == 0) "" else types.map { _.repr}.mkString("<", ",", ">"))
 } 
 case class Tyvar(name: String) extends Ty {
@@ -55,14 +50,18 @@ case class TyAny() extends Ty {
   override def repr = "Any"
 }
 
+object Tycon {
+  def apply(name: String) : Tycon = Tycon(name, List(), List())
+}
 
 class ParseException(m: String) extends Exception(m)
 class TypeException(m: String, node: Node) extends Exception(m) {
-  
   override def getMessage() = {
+    if (node.position == null) println ("This node has no position: " + node)
     m + " at " + node.position._1 + " Line " + node.position._2 
   }
 }
+class CodegenException(m: String) extends Exception(m)
 
 
 case class TypeScheme(tyvars: List[Tyvar], tpe: Ty) {

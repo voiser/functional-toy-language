@@ -339,6 +339,28 @@ object Codegen2 {
           stack.pop
           stack.pop
           
+        case NFloat(f) =>
+          mv.visitTypeInsn(NEW, "runtime/Float");
+          stack.push
+          mv.visitInsn(DUP);
+          stack.push
+          mv.visitLdcInsn(new java.lang.Float(f));
+          stack.push
+          mv.visitMethodInsn(INVOKESPECIAL, "runtime/Float", "<init>", "(F)V", false);
+          stack.pop
+          stack.pop
+          
+        case NString(s) =>
+          mv.visitTypeInsn(NEW, "runtime/Str")
+          stack.push
+          mv.visitInsn(DUP);
+          stack.push
+          mv.visitLdcInsn(s)
+          stack.push
+          mv.visitMethodInsn(INVOKESPECIAL, "runtime/Str", "<init>", "(Ljava/lang/String;)V", false)
+          stack.pop
+          stack.pop
+          
         case x @ NApply(fname, args) =>
           val realname = x.realName
           val javafname = "apply" + args.length

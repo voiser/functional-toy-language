@@ -16,19 +16,20 @@ class TyvarGenerator(prefix: String) {
 
 object Typer3 {
   
-  val numType = Tycon("Num", List())
-  val intType = Tycon("Int", List()).is(numType)
-  val stringType = Tycon("Str", List())
-  val floatType = Tycon("Float", List()).is(numType)
-  val boolType = Tycon("Bool", List())
-  val unitType = Tycon("Unit", List())
+  val eqType = Tycon("Eq")
+  val numType = Tycon("Num", List(), List(eqType))
+  val intType = Tycon("Int", List(), List(numType, eqType))
+  val stringType = Tycon("Str", List(), List(eqType))
+  val floatType = Tycon("Float", List(), List(numType, eqType))
+  val boolType = Tycon("Bool", List(), List(eqType))
+  val unitType = Tycon("Unit")
   
   def tyvars(t: Ty) : List[Tyvar] = t match {
     case tv @ Tyvar(name) => List(tv)
     case Tyfn(in, out) => 
       val x = (in flatMap { x => tyvars(x) }) 
       x union tyvars(out) distinct
-    case Tycon(k, ts) => (List[Tyvar]() /: ts) ((tvs, t) => tvs union tyvars(t)) distinct 
+    case Tycon(k, ts, isa) => (List[Tyvar]() /: ts) ((tvs, t) => tvs union tyvars(t)) distinct 
   }
   
   /**
@@ -51,8 +52,8 @@ object Typer3 {
       case Tyfn(params, out) =>
         Tyfn(params map apply, apply(out))
         
-      case Tycon(name, types) =>
-        Tycon(name, types map apply)
+      case Tycon(name, types, isa) =>
+        Tycon(name, types map apply, isa)
         
       case TyAny() => a
     }
@@ -68,8 +69,7 @@ object Typer3 {
     def repr = ""
   }
   
-  //def isa(n1: String, n2: String) = n1 == "Num" && n2 == "Int"
-  
+  def isa(t1: Tycon, t2: Tycon) = t2.isa.contains(t1)
   
   /**
    * 
@@ -93,12 +93,15 @@ object Typer3 {
         val s1 = (s /: (in1 zip in2)) ((s, tu) => unify(tu._1, tu._2, s, n))
         unify(out1, out2, s1, n)
         
-      case (Tycon(n1, tv1), Tycon(n2, tv2)) if (n1 == n2) =>
+      case (Tycon(n1, tv1, isa1), Tycon(n2, tv2, isa2)) if (n1 == n2) =>
         (s /: (tv1 zip tv2)) ((s, tu) => unify(tu._1, tu._2, s, n))
         
-      //case (Tycon(n1, tv1), Tycon(n2, tv2)) if (isa(n1,n2)) =>
-      //  (s /: (tv1 zip tv2)) ((s, tu) => unify(tu._1, tu._2, s))
-      
+      case (a @ Tycon(n1, tv1, isa1), b @ Tycon(n2, tv2, isa2)) if (isa(b, a)) =>
+        unify(t2, t1, s, n)
+        
+      case (a @ Tycon(n1, tv1, isa1), b @ Tycon(n2, tv2, isa2)) if (isa(a, b)) =>
+        (s /: (tv1 zip tv2)) ((s, tu) => unify(tu._1, tu._2, s, n))
+        
       case _ => throw new TypeException("Can't unify " + t1 + " with " + t2, n)
     }
   }
@@ -136,13 +139,13 @@ object Typer3 {
             s1
         }
       
-      case NFn(params, ex) =>
+      case x @ NFn(params, ex) =>
         def f(p: NFnArg) : Ty = {
           val n = p.name
           val t = p.klass
           val tt = gen.get()
           t match {
-            case KlassConst(name) => Tycon(name, List())
+            case KlassConst(name) => throw new TypeException("Not yet implemented!", x); 
             case KlassVar(name) => tt 
           }
         }
@@ -160,14 +163,17 @@ object Typer3 {
         val cands = candidates.map { candidate =>
           //println("  Trying candidate " + candidate)
           try {
-            val s1 = tp(env, NRef(candidate), Tyfn(a, t), gen, s)
+            val r = NRef(candidate)
+            r.position = x.position
+            val s1 = tp(env, r, Tyfn(a, t), gen, s)
             val s2 = (s1 /: (args zip a)) ((s2, arg) => tp(env, arg._1, arg._2, gen, s2))
             //println("  This one worked")
             (candidate, s2)
           } 
           catch {
             case e: TypeException => 
-              //println("  This one did NOT work " + e)
+              println("  This one did NOT work " + e)
+              //e.printStackTrace()
               null
           }
         }.filterNot { _ == null }

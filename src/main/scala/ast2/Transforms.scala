@@ -95,7 +95,9 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
     //println("Visiting a function with name " + n.name)
     if (anonNames.contains(n.name)) {
       //println("  This is an anonymous function!")
-      NRef(n.name)      
+      val x = NRef(n.name)
+      fill(n, x)
+      x
     } 
     else {
       super.visitNFn(n)

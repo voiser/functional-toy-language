@@ -6,7 +6,7 @@ import ast2._
 /**
  * @author david
  */
-class BasicTests extends FunSuite {
+class EqTests extends FunSuite {
   
   def run(code: String) = {
     val filename = "test"
@@ -17,30 +17,27 @@ class BasicTests extends FunSuite {
     ret
   }
 
-  test ("1 + 2 = 3") { 
+  test("Int as Eq") {
     val code = """
-      def a = 1
-      def b = 2
-      add(a, b)
+      cons(eq(1, 2), cons(eq(1, 1), nil))
       """
     val ret = run(code)
-    assert ("3" == ret.toString())
-  }
-
-  test ("Create a list") {
-    val code = """
-      cons(1, list(2))
-      """
-    val ret = run(code)
-    assert ("[1 2]" == ret.toString())
+    assert ("[False True]" == ret.toString())
   }
   
-  test("Compute factorial") {
+  test("Float as Eq") {
     val code = """
-      def f = { x -> if eq(x, 2) then x else times(x, f(sub(x, 1))) }
-      f(4)
+      cons(eq(1.0, 2.0), cons(eq(1.0, 1.0), nil))
       """
     val ret = run(code)
-    assert ("24" == ret.toString())
+    assert ("[False True]" == ret.toString())
+  }
+  
+  test("String as Eq") {
+    val code = """
+      cons(eq("a", "b"), cons(eq("c", "c"), nil))
+      """
+    val ret = run(code)
+    assert ("[False True]" == ret.toString())
   }
 }
