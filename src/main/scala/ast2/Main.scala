@@ -29,7 +29,7 @@ object Main {
     
     env.put("id", "runtime/id", TypeScheme(List(a), Tyfn(List(a), a)))
     env.put("do", "runtime/do_", TypeScheme(List(a, b), Tyfn(List(Tyfn(List(a), b), a), b)))
-    env.put("eq", "runtime/eq", TypeScheme(List(), Tyfn(List(eq, eq), bool)))
+    env.put("eq", "runtime/eq_", TypeScheme(List(), Tyfn(List(eq, eq), bool)))
     env.put("puts", "runtime/puts", TypeScheme(List(), Tyfn(List(a), unit)))
     
     env.put("list", "runtime/list_of", TypeScheme(List(a), Tyfn(List(a), listType)))
