@@ -1,6 +1,6 @@
 package runtime;
 
-public class eq extends Func {
+public class eq_ extends Func {
 
 	@Override
 	public Thing apply2(Thing a1, Thing a2) {
