@@ -62,8 +62,6 @@ class CompilationUnit(
       val name = f.function.name
       val captures = f.captures
       
-      //println("Hi, I'm " + name + " and my captures are " + captures)
-      
       val className = (module.name + "." + name)
       val slashedName = className.replace(".", "/")
     
@@ -359,10 +357,9 @@ object Codegen2 {
         case NDef(name, v : NFn) =>
         case x : NForward =>
           
-        case NDef(name, v : NApply) =>
+        case NDef(name, v) =>
           val local = findlocal(name, allLocals).getOrElse(throw new RuntimeException("No local for " + name))._3
           add(uf, mv, v, stack)
-          //mv.visitTypeInsn(CHECKCAST, FUNC);
           mv.visitInsn(DUP)
           stack.push
           mv.visitVarInsn(ASTORE, local)
@@ -422,32 +419,23 @@ object Codegen2 {
           val javafname = "apply" + args.length
           val javasignature = "(" + (JTHING * args.length) + ")" + JTHING
 
-          //println ("Compiling apply recursive = " + x.isRecursive)
-          
-          // push the function object
-          //if (x.isRecursive) {
-          //  mv.visitVarInsn(ALOAD, 0)
-          //  stack.push
-          //} 
-          //else { 
-            findlocal(realname, allLocals) match {
-              case Some((name, node, i)) =>
-                // it's a local
-                mv.visitVarInsn(ALOAD, i)
-                stack.push
-                
-              case None =>
-                // it's a ref
-                mv.visitVarInsn(ALOAD, 0)
-                stack.push
-                mv.visitFieldInsn(GETFIELD, uf.slashedName, realname, JFUNC)
-            }
-          //}
-          // push the arguments
+          findlocal(realname, allLocals) match {
+            case Some((name, node, i)) =>
+              // it's a local
+              mv.visitVarInsn(ALOAD, i)
+              stack.push
+              
+            case None =>
+              // it's a ref
+              mv.visitVarInsn(ALOAD, 0)
+              stack.push
+              mv.visitFieldInsn(GETFIELD, uf.slashedName, realname, JFUNC)
+          }
+
           args.foreach { arg => 
             add(uf, mv, arg, stack)
           }
-          // invoke the function object
+          
           mv.visitMethodInsn(INVOKEVIRTUAL, FUNC, javafname, javasignature, false)
           args.foreach { x => stack.pop }
           
@@ -456,11 +444,9 @@ object Codegen2 {
           mv.visitTypeInsn(INSTANCEOF, TRUE)
           val l1 = new Label()
           mv.visitJumpInsn(IFEQ, l1)
-          // true branch
           add(uf, mv, extrue, stack)
           stack.push
           mv.visitInsn(ARETURN)
-          // falsew branch
           mv.visitLabel(l1)
           mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
           add(uf, mv, exfalse, stack)
