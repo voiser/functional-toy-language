@@ -2,7 +2,8 @@ package ast2
 
 import scala.collection.JavaConverters._
 import org.antlr.v4.runtime.ParserRuleContext
-
+import org.antlr.v4.runtime.ANTLRInputStream
+import org.antlr.v4.runtime.CommonTokenStream
 
 /**
  * @author david
@@ -92,6 +93,16 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   override def visitFile(ctx: GrammarParser.FileContext) = {
     val f = fill(NFn(List(), visitBlock(ctx.block())), ctx)
     fill(NModule(ctx.name.getText, f), ctx)
+  }
+  
+  override def visitForward(ctx: GrammarParser.ForwardContext) = {
+    val name = ctx.ID().getText
+    val tydef = ctx.ty.getText
+    val lexer = new TypegrammarLexer(new ANTLRInputStream(tydef))
+    val parser = new TypegrammarParser(new CommonTokenStream(lexer))
+    val cst = parser.ty()
+    val gty = new TypeVisitor().visitTy(cst)
+    fill(NForward(name, gty), ctx)
   }
 }
 

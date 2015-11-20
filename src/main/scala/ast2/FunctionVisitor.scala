@@ -84,25 +84,6 @@ class Visitor {
   }
 }
 
-/*
-class FunctionNamerVisitor(module: NModule) extends Visitor {
-
-  module.main.name = "main"
-  visit(module.main)
-  
-  override def visitNDef(n: NDef) {
-    n.value match {
-      case x: NFn =>
-        println ("Naming function " + x + " with name " + n.name)
-        val fname = n.env.repr + "$" + n.name
-        x.name = fname
-        x.defname = n.name
-      case _ => 
-    }
-  }
-}
-*/
-
 class FunctionNamerVisitor2(name: String) extends Visitor {
   
   override def visit(n: NDef) {

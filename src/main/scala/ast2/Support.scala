@@ -5,6 +5,9 @@ abstract class KlassRef
 case class KlassConst(name: String) extends KlassRef
 case class KlassVar(name: String) extends KlassRef
 
+abstract class GTy
+case class GTycon(name: String) extends GTy
+case class GTyfn(lefts: List[GTy], right: GTy) extends GTy
 
 abstract class Node {
   var ty: Ty = null
@@ -33,6 +36,8 @@ case class NApply(name: String, params: List[Node]) extends Node {
   var isRecursive: Boolean = false
 }
 case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
+case class NForward(name: String, tydef: GTy) extends Node
+
 
 abstract class Ty {
   def repr: String
@@ -61,6 +66,7 @@ class TypeException(m: String, node: Node) extends Exception(m) {
     m + " at " + node.position._1 + " Line " + node.position._2 
   }
 }
+class NoCandidateException(m: String, node: Node) extends TypeException(m, node)
 class CodegenException(m: String) extends Exception(m)
 
 
@@ -71,11 +77,15 @@ case class TypeScheme(tyvars: List[Tyvar], tpe: Ty) {
 }
 
 
-case class Function(function: NFn, captures: List[NRef] /*, recursives: List[NRef] */)
+case class Function(function: NFn, captures: List[NRef]) {
+  override def toString() = "Function(" + function.defname + ", " + captures + ")"
+}
 
 case class Call(function: NFn, calls: List[String])
 
-case class Extern(function: NFn, symbols: List[String])
+case class Extern(function: NFn, symbols: List[String]) {
+  override def toString() = "Extern(" + function.defname + ", " + symbols + ")"
+}
 
 
 class Env(var id: String, val parent: Env, introducedBy: Node) {
@@ -84,10 +94,22 @@ class Env(var id: String, val parent: Env, introducedBy: Node) {
   
   val names = scala.collection.mutable.Map[String, TypeScheme]()
   val fullnames = scala.collection.mutable.Map[String, String]()
+  val types = scala.collection.mutable.Map[String, Ty]()
   
   def allFull = fullnames ++ (if (parent != null) parent.fullnames else Map())
   def allNames = names ++ (if (parent != null) parent.names else Map())
-  
+ 
+  def putType(name: String, ty: Ty) {
+    types.put(name, ty)
+  }
+
+  def getType(name: String) : Option[Ty] = types.get(name) match {
+    case x:Some[Ty] => x
+    case None =>
+      if (parent != null) parent.getType(name)
+      else None
+  }
+
   def put(name: String, fullname: String, ty: TypeScheme) {
     names.put(name, ty)
     fullnames.put(name, fullname)
@@ -99,7 +121,7 @@ class Env(var id: String, val parent: Env, introducedBy: Node) {
   }
 
   def get2(name: String) : List[(String, TypeScheme)] = {
-    val mine = names.filter(p => p._1 == name || p._1.startsWith(name + "$")).toList
+    val mine = names.filter(p => p._1 == name || p._1.startsWith(name + "$$")).toList
     val inherited = if (parent != null) parent.get2(name) else List()
     mine ++ inherited
   }

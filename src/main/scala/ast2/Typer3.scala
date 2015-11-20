@@ -117,7 +117,7 @@ object Typer3 {
       case (a @ Tycon(n1, tv1, isa1), b @ Tycon(n2, tv2, isa2)) if (isa(a, b)) =>
         (s /: (tv1 zip tv2)) ((s, tu) => unify(tu._1, tu._2, s, n))
         
-      case _ => throw new TypeException("Can't unify " + t1 + " with " + t2, n)
+      case _ => throw new TypeException("Can't unify " + s1.repr + " with " + s2.repr, n)
     }
   }
   
@@ -127,6 +127,11 @@ object Typer3 {
   def tp(env: Env, n: Node, t: Ty, gen: TyvarGenerator, s: Subs) : Subs = {
     n.env = env
     val tysub = n match {
+      
+      case a @ NForward(name, gty) =>
+        val ty = Typegrammar.toType(gty, Main.rootEnv)
+        env.put(name + "$$forward", ty)
+        unify(t, ty, s, n)
       
       case a : NInt => unify(t, intType, s, n)
       case a : NFloat => unify(t, floatType, s, n)
@@ -144,14 +149,32 @@ object Typer3 {
         u match {
           case Some(typescheme) => throw new TypeException("'" + name + "' is already defined", n)
           case None =>
-            //val env1 = Env(env, n)
-            val env1 = env
-            val a = gen.get()
-            env1.put(name, a)
+            // is there a forward definition?
+            env.get(name + "$$forward") match {
+              case Some(ts) =>
+                val forward = ts.newInstance(gen)
+                //println("Forward definition: " + forward.repr)
+                val env1 = env
+                env1.put(name, forward)
+
+                val s2 = unify(t, forward, s, n)
+                //println("s2 = " + s2)
+                
+                val s1 = tp(env1, ex, t, gen, s2)
+                //println("BEFORE: " + s)
+                //println("I have asigned " + a + " the type " + t)
+                //println("AFTER : " + s1)
+                s1
+              
+              case None =>
+                val env1 = env
+                val a = gen.get()
+                env1.put(name, a)
             
-            val s1 = tp(env1, ex, t, gen, s)
-            env.put(name, s1(t))
-            s1
+                val s1 = tp(env1, ex, t, gen, s)
+                env.put(name, s1(t))
+                s1
+            }
         }
       
       case x @ NFn(params, ex) =>
@@ -186,18 +209,27 @@ object Typer3 {
             (candidate, s2)
           } 
           catch {
+            case e: NoCandidateException =>
+              throw e
+              
             case e: TypeException => 
-              println("  This one did NOT work " + e)
+              //println("  This one did NOT work " + e)
               //e.printStackTrace()
               null
           }
         }.filterNot { _ == null }
         
-        if (cands.length == 0) throw new TypeException("No candidates for '" + name + "'", n)
-        else if (cands.length > 1) throw new TypeException("Too many candidates for '" + name + "'", n)
+        val candsnames = cands.map(_._1)
+        val fwd = name + "$$forward"
+        val finalcands = 
+          if (cands.length == 2 && candsnames.contains(fwd)) cands.filterNot(_._1 == fwd)
+          else cands
+        
+        if (finalcands.length == 0) throw new NoCandidateException("No candidates for '" + name + "'", n)
+        else if (finalcands.length > 1) throw new NoCandidateException("Too many candidates for '" + name + "'", n)
         else {
-          x.realName = cands(0)._1
-          cands(0)._2
+          x.realName = finalcands(0)._1.replace("$$forward", "")
+          finalcands(0)._2
         }
                 
       case NIf(cond, e1, e2) =>
@@ -210,13 +242,14 @@ object Typer3 {
 
         val b, c = gen.get()
         val trues = tp(env, e1, b, gen, conds2)
-        //val falses = tp(env, e2, c, gen, trues)
-        // If I could type the CASE_TRUE branch, I will assume that
-        // the CASE_FALSE branch is exactly the same type.
-        val falses = tp(env, e2, c, gen, trues.extend(c, trues(b)))
+        val falses = tp(env, e2, c, gen, trues)
         
-        val u = unify(falses(b), falses(c), falses, n)
-        unify(t, c, u, n)
+        //println("true branch  = " + falses(b))
+        //println("false branch = " + falses(c))
+        
+        val u = unify(falses(b), falses(c), conds2, n)
+        //println("u = " + u)
+        u
         
       case NBlock(exs) =>
         //val env1 = Env(env, n)

@@ -11,7 +11,13 @@ public class Kk extends Func {
     	
 	}
     
+    public void initialize (Thing other) {
+    	
+    }
+    
     public static void main(String[] args) {
-    	new runtime.Str("lalala");
+    	Func kk1 = new Kk();
+    	Func kk2 = new Kk();
+    	((Kk)kk1).initialize(kk2);
 	} 
 }

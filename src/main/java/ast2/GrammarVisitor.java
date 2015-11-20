@@ -70,4 +70,16 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitCond(GrammarParser.CondContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#forward}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitForward(GrammarParser.ForwardContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#tydef}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTydef(GrammarParser.TydefContext ctx);
 }

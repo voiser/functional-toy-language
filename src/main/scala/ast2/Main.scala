@@ -17,8 +17,17 @@ object Main {
     val float = Typer3.floatType
     val bool = Typer3.boolType
     val unit = Typer3.unitType
-    
+    val str = Typer3.stringType
     val listType = Tycon("List", List(a), List())
+    
+    env.putType("Eq", eq)
+    env.putType("Num", num)
+    env.putType("Int", int)
+    env.putType("Float", float)
+    env.putType("Bool", bool)
+    env.putType("Str", str)
+    env.putType("Unit", unit)
+    env.putType("List", listType)
     
     env.put("true", "runtime/True", TypeScheme(List(), bool))
     env.put("false", "runtime/False", TypeScheme(List(), bool))
@@ -53,7 +62,7 @@ object Main {
     // Type the AST
     Typer3.getType(rootEnv, module.main)
 
-    // show(module.main, code)
+    //show(module.main, code)
         
     // Name all named functions
     // new FunctionNamerVisitor(module)
@@ -93,7 +102,7 @@ object Main {
 
   }
   
-  def show(n: Node,code: String) {
+  def show(n: Node, code: String) {
     val codelines = code.split("\n")
     
     def show0(n: Node, d: Int) {

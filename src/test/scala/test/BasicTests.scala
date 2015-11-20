@@ -2,6 +2,9 @@ package test
 
 import org.scalatest.FunSuite
 import ast2._
+import org.antlr.v4.runtime.ANTLRInputStream
+import org.antlr.v4.runtime.CommonTokenStream
+import java.lang.reflect.InvocationTargetException
 
 /**
  * @author david
@@ -16,7 +19,7 @@ class BasicTests extends FunSuite {
     val ret = Main.execute(unit.module.name, bytes)
     ret
   }
-
+  
   test ("1 + 2 = 3") { 
     val code = """
       def a = 1
@@ -35,7 +38,22 @@ class BasicTests extends FunSuite {
     assert ("[1 2]" == ret.toString())
   }
   
-  test("Compute factorial") {
+  test("Forward definition") {
+    val code = """
+      g : Int -> Int
+      def g = { x -> g(x) }
+      g(1)
+    """
+    try {
+      run(code)
+    }
+    catch {
+      case e: InvocationTargetException =>
+        assert (e.getCause.isInstanceOf[StackOverflowError])
+    }
+  }
+  
+  test("Recursive call") {
     val code = """
       def f = { x -> if eq(x, 2) then x else times(x, f(sub(x, 1))) }
       f(4)
@@ -43,8 +61,19 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert ("24" == ret.toString())
   }
-  
+
+  test("Mutual recursion") {
+    val code = """
+      g : Int -> Int
+      def f = { x -> if eq(x, 2) then x else times(x, g(sub(x, 1))) }
+      def g = { x -> f(x) }
+      f(4)
+      """
+    val ret = run(code)
+    assert ("24" == ret.toString())
+  }
+
   test("isa") {
-    Typer3.isa(Typer3.eqType, Typer3.intType)
+    assert (Typer3.isa(Typer3.eqType, Typer3.intType))
   }
 }

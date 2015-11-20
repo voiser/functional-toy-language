@@ -228,10 +228,8 @@ object Codegen2 {
   def addConstructor(
         cw: ClassWriter, 
         uf: CompilationUnitFunction) {
-    val ncaptures = uf.captures.length
-    val args = JTHING * ncaptures 
-    
-    val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "(" + args + ")V", null, null)
+
+    val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
     mv.visitCode()
     
     mv.visitVarInsn(ALOAD, 0)
@@ -239,6 +237,24 @@ object Codegen2 {
 
     val stack = new Stack()
     initConstants(mv, stack, uf)
+    
+    mv.visitInsn(RETURN)
+
+    mv.visitMaxs(stack.maxdepth + 1, 1)
+    mv.visitEnd()
+  }
+  
+  def addInitializer(
+        cw: ClassWriter, 
+        uf: CompilationUnitFunction) {
+    
+    val ncaptures = uf.captures.length
+    val args = JTHING * ncaptures 
+    
+    val mv = cw.visitMethod(ACC_PUBLIC, "initialize", "(" + args + ")V", null, null)
+    mv.visitCode()
+    
+    val stack = new Stack()
     
     var i = 1
     uf.captures.foreach { capture =>
@@ -262,7 +278,71 @@ object Codegen2 {
   
   def findlocal(name: String, locals: List[(String, Node, Int)]) =
     locals.find(p => p._1 == name) 
+
+  def instantiate(
+      uf: CompilationUnitFunction, 
+      mv: MethodVisitor, 
+      ex: Node, 
+      stack: Stack) {
+    
+    val allLocals = uf.params ++ uf.locals
+    
+    ex match {
+
+      case NDef(name, v: NFn) =>
+        val destname = uf.unit.module.name + "/" + v.name
+        val local = findlocal(name, allLocals).getOrElse(throw new RuntimeException("No local for " + name))._3
+        mv.visitTypeInsn(NEW, destname);
+        stack.push
+        mv.visitInsn(DUP);
+        stack.push
+        
+        mv.visitMethodInsn(INVOKESPECIAL, destname, "<init>", "()V", false);          
+        mv.visitTypeInsn(CHECKCAST, FUNC);
+        mv.visitVarInsn(ASTORE, local)
+        stack.pop
+        
+      case _ =>
+    }
+  }
   
+  def initialize(
+      uf: CompilationUnitFunction, 
+      mv: MethodVisitor, 
+      ex: Node, 
+      stack: Stack) {
+    
+    val allLocals = uf.params ++ uf.locals
+    
+    ex match {
+      
+      case NDef(name, v: NFn) =>
+        val destname = uf.unit.module.name + "/" + v.name
+        val local = findlocal(name, allLocals).getOrElse(throw new RuntimeException("No local for " + name))._3
+        
+        mv.visitVarInsn(ALOAD, local);
+        mv.visitTypeInsn(CHECKCAST, destname);
+        
+        val ncaptures = uf.unit.unitFunctions.find { f => f.name == v.name } match {
+          case Some(u) =>
+            val captures = u.captures
+            captures.foreach { x => 
+              add(uf, mv, x, stack)
+            }
+            captures.length
+            
+          case None => throw new RuntimeException("Ouch! This is a compiler bug")
+        }
+        
+        val j = JTHING * ncaptures
+        
+        mv.visitMethodInsn(INVOKEVIRTUAL, destname, "initialize", "(" + j + ")V", false);          
+        stack.pop
+        
+      case _ =>
+    }
+  }
+    
   def add(
       uf: CompilationUnitFunction, 
       mv: MethodVisitor, 
@@ -276,32 +356,8 @@ object Codegen2 {
         case NDef(name, v : NFloat) =>
         case NDef(name, v : NString) =>
         case NDef(name, v : NRef) =>
-
         case NDef(name, v : NFn) =>
-          val destname = uf.unit.module.name + "/" + v.name
-          val local = findlocal(name, allLocals).getOrElse(throw new RuntimeException("No local for " + name))._3
-          mv.visitTypeInsn(NEW, destname);
-          stack.push
-          mv.visitInsn(DUP);
-          stack.push
-          
-          val ncaptures = uf.unit.unitFunctions.find { f => f.name == v.name } match {
-            case Some(u) =>
-              val captures = u.captures
-              captures.foreach { x => 
-                add(uf, mv, x, stack)    
-              }
-              captures.length
-              
-            case None => throw new RuntimeException("Ouch! This is a compiler bug")
-          }
-          
-          val j = JTHING * ncaptures
-          
-          mv.visitMethodInsn(INVOKESPECIAL, destname, "<init>", "(" + j + ")V", false);          
-          mv.visitTypeInsn(CHECKCAST, FUNC);
-          mv.visitVarInsn(ASTORE, local)
-          stack.pop
+        case x : NForward =>
           
         case NDef(name, v : NApply) =>
           val local = findlocal(name, allLocals).getOrElse(throw new RuntimeException("No local for " + name))._3
@@ -426,10 +482,18 @@ object Codegen2 {
     val stack = new Stack()
     (0 to nargs).map { x => stack.push }
     
-    uf.root.value.children.foreach { ex => 
-      add(uf, mv, ex, stack)
+    uf.root.value.children.foreach { ex =>
+      instantiate(uf, mv, ex, stack)
+    }
+    
+    uf.root.value.children.foreach { ex =>
+      initialize(uf, mv, ex, stack)
     }
 
+    uf.root.value.children.foreach { ex =>
+      add(uf, mv, ex, stack)
+    }
+    
     mv.visitInsn(ARETURN)
     mv.visitMaxs(stack.maxdepth, uf.locals.size + 1)
     mv.visitEnd()
@@ -457,6 +521,7 @@ object Codegen2 {
     
     addConstants(cw, uf)
     addConstructor(cw, uf)
+    addInitializer(cw, uf)
     if (uf.root.params.length == 0) addApply(0, cw, uf)
     if (uf.root.params.length == 1) addApply(1, cw, uf)
     if (uf.name == "main") addEntryPoint(cw, uf)

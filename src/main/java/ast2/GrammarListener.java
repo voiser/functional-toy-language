@@ -107,4 +107,24 @@ public interface GrammarListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCond(GrammarParser.CondContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#forward}.
+	 * @param ctx the parse tree
+	 */
+	void enterForward(GrammarParser.ForwardContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#forward}.
+	 * @param ctx the parse tree
+	 */
+	void exitForward(GrammarParser.ForwardContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#tydef}.
+	 * @param ctx the parse tree
+	 */
+	void enterTydef(GrammarParser.TydefContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#tydef}.
+	 * @param ctx the parse tree
+	 */
+	void exitTydef(GrammarParser.TydefContext ctx);
 }
