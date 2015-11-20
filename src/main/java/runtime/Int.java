@@ -30,6 +30,11 @@ public class Int extends Thing implements Num, Eq {
     }
     
     @Override
+    public Num div(Num other) {
+        return new Int(i / ((Int)other).i);
+    }
+    
+    @Override
     public String toString() {
         return "" + i;
     }    

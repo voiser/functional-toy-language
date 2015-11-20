@@ -30,6 +30,11 @@ public class Float extends Thing implements Num, Eq {
     }
     
     @Override
+    public Num div(Num other) {
+    	return new Float(f / ((Float)other).f);
+    }
+    
+    @Override
     public String toString() {
         return "" + f;
     }

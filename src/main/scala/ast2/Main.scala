@@ -35,7 +35,8 @@ object Main {
     env.put("add", "runtime/add", TypeScheme(List(), Tyfn(List(num, num), num)))
     env.put("sub", "runtime/sub", TypeScheme(List(), Tyfn(List(num, num), num)))
     env.put("times", "runtime/times", TypeScheme(List(), Tyfn(List(num, num), num)))
-    
+    env.put("div", "runtime/div", TypeScheme(List(), Tyfn(List(num, num), num)))
+
     env.put("id", "runtime/id", TypeScheme(List(a), Tyfn(List(a), a)))
     env.put("do", "runtime/do_", TypeScheme(List(a, b), Tyfn(List(Tyfn(List(a), b), a), b)))
     env.put("eq", "runtime/eq_", TypeScheme(List(), Tyfn(List(eq, eq), bool)))
