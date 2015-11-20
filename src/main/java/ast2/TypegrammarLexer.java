@@ -1,4 +1,4 @@
-// Generated from grammar/Typegrammar.g4 by ANTLR 4.5.1
+// Generated from src/main/antlr/Typegrammar.g4 by ANTLR 4.5.1
 package ast2;
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
