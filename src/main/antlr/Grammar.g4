@@ -14,6 +14,7 @@ expression : value
            | cond
            | '(' expression ')'
            | forward
+           | binary
            ;
 
 value : INTEGER 
@@ -46,10 +47,21 @@ forward : ID ':' ty=tydef
 tydef : CLASSID | '[' tydef ']' | tydef '->' tydef
       ;
 
+binary : xleft=binexp op=BINOP right=binexp
+       | bleft=binary op=BINOP right=binexp
+       ;
+
+binexp : value 
+       | apply
+       | ref
+       | '(' binary ')'
+       ;
+
 ID : [a-z][a-zA-Z0-9_\-]* ;
 CLASSID : [A-Z][a-zA-Z]* ;
 INTEGER : [0-9]+ ;
 FLOAT : [0-9]* '.' [0-9]+ ;
 STRING : '"' ~["]* '"' ;
+BINOP : '+' | '-' | '*' | '/' | '==' ;
 WS : [ \t\r\n]+ -> skip ;
 

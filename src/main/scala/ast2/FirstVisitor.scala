@@ -104,5 +104,29 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     val gty = new TypeVisitor().visitTy(cst)
     fill(NForward(name, gty), ctx)
   }
+  
+  override def visitBinexp(ctx: GrammarParser.BinexpContext) = {
+    if (ctx.binary() != null) {
+      visitBinary(ctx.binary())
+    }
+    else visitChildren(ctx)
+  }
+  
+  override def visitBinary(ctx: GrammarParser.BinaryContext) = {
+    val left = 
+      if (ctx.xleft != null) visitBinexp(ctx.xleft)
+      else visitBinary(ctx.bleft)
+      
+    val right = visitBinexp(ctx.right)
+    val op = ctx.op.getText
+    val fname = op match {
+      case "+" => "add"
+      case "-" => "sub"
+      case "*" => "times"
+      case "/" => "div"
+      case "==" => "eq"
+    }
+    fill(NApply(fname, List(left, right)), ctx)
+  }
 }
 

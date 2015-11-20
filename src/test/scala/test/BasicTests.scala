@@ -72,6 +72,26 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert ("24" == ret.toString())
   }
+  
+  test("binary op") {
+    val code = """
+      def a = 1 + (2 * 3) - (4 / 2)
+      a
+      """
+    val ret = run(code)
+    assert ("5" == ret.toString())
+  }
+  
+  test("Mutual recursion with binary operations") {
+    val code = """
+      g : Int -> Int
+      def f = { x -> if x == 2 then x else x * g(x - 1) }
+      def g = { x -> f(x) }
+      f(4)
+      """
+    val ret = run(code)
+    assert ("24" == ret.toString())
+  }
 
   test("isa") {
     assert (Typer3.isa(Typer3.eqType, Typer3.intType))
