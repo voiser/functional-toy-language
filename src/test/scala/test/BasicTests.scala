@@ -40,7 +40,7 @@ class BasicTests extends FunSuite {
   
   test("Forward definition") {
     val code = """
-      g : Int -> Int
+      g :: Int -> Int
       def g = { x -> g(x) }
       g(1)
     """
@@ -64,7 +64,7 @@ class BasicTests extends FunSuite {
 
   test("Mutual recursion") {
     val code = """
-      g : Int -> Int
+      g :: Int -> Int
       def f = { x -> if eq(x, 2) then x else times(x, g(sub(x, 1))) }
       def g = { x -> f(x) }
       f(4)
@@ -84,7 +84,7 @@ class BasicTests extends FunSuite {
   
   test("Mutual recursion with binary operations") {
     val code = """
-      g : Int -> Int
+      g :: Int -> Int
       def f = { x -> if x == 2 then x else x * g(x - 1) }
       def g = { x -> f(x) }
       f(4)
@@ -95,13 +95,21 @@ class BasicTests extends FunSuite {
 
   test("Generics and forward definitions") {
     val code = """
-      g : a -> List[a]
+      g :: a -> List[a]
       def f = { x -> g(x) }
       def g = { x -> list(x) }
       f(4)
       """
     val ret = run(code)
     assert ("[4]" == ret.toString())
+  }
+  
+  test("lists") {
+    val code = """
+      def xs = [1, 2, 3]
+      """
+    val ret = run(code)
+    println(ret)
   }
 
   test("isa") {

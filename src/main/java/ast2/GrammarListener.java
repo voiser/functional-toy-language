@@ -147,4 +147,14 @@ public interface GrammarListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitBinexp(GrammarParser.BinexpContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#list}.
+	 * @param ctx the parse tree
+	 */
+	void enterList(GrammarParser.ListContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#list}.
+	 * @param ctx the parse tree
+	 */
+	void exitList(GrammarParser.ListContext ctx);
 }

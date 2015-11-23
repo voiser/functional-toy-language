@@ -94,4 +94,10 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitBinexp(GrammarParser.BinexpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#list}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitList(GrammarParser.ListContext ctx);
 }

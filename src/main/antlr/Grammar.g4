@@ -15,6 +15,7 @@ expression : value
            | '(' expression ')'
            | forward
            | binary
+           | list
            ;
 
 value : INTEGER 
@@ -41,7 +42,7 @@ ref : ID ;
 cond : 'if' condition=expression 'then' exptrue=expression 'else' expfalse=expression
      ;
  
-forward : ID ':' ty=tydef
+forward : ID '::' ty=tydef
         ;
 
 tydef : CLASSID | ID | tydef '[' tydef ']' | tydef '->' tydef
@@ -56,6 +57,9 @@ binexp : value
        | ref
        | '(' binary ')'
        ;
+
+list : '[' expression (',' expression)* ']'
+     ;
 
 ID : [a-z][a-zA-Z0-9_\-]* ;
 CLASSID : [A-Z][a-zA-Z]* ;
