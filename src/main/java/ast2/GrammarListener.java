@@ -157,4 +157,24 @@ public interface GrammarListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitList(GrammarParser.ListContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#map}.
+	 * @param ctx the parse tree
+	 */
+	void enterMap(GrammarParser.MapContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#map}.
+	 * @param ctx the parse tree
+	 */
+	void exitMap(GrammarParser.MapContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#mappair}.
+	 * @param ctx the parse tree
+	 */
+	void enterMappair(GrammarParser.MappairContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#mappair}.
+	 * @param ctx the parse tree
+	 */
+	void exitMappair(GrammarParser.MappairContext ctx);
 }

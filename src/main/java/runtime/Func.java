@@ -13,5 +13,8 @@ public abstract class Func extends Thing {
     public Thing apply2(Thing a1, Thing a2) {
         throw new RuntimeException("This is a compiler bug");
     }
-    
+
+    public Thing apply3(Thing a1, Thing a2, Thing a3) {
+        throw new RuntimeException("This is a compiler bug");
+    }
 }

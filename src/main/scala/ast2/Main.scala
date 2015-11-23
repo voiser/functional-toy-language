@@ -19,6 +19,7 @@ object Main {
     val unit = Typer3.unitType
     val str = Typer3.stringType
     val listType = Tycon("List", List(a), List())
+    val dictType = Tycon("Dict", List(a, b), List())
     
     env.putType("Eq", eq)
     env.putType("Num", num)
@@ -28,6 +29,7 @@ object Main {
     env.putType("Str", str)
     env.putType("Unit", unit)
     env.putType("List", listType)
+    env.putType("Dict", dictType)
     
     env.put("true", "runtime/True", TypeScheme(List(), bool))
     env.put("false", "runtime/False", TypeScheme(List(), bool))
@@ -45,6 +47,9 @@ object Main {
     env.put("list", "runtime/list_of", TypeScheme(List(a), Tyfn(List(a), listType)))
     env.put("cons", "runtime/cons", TypeScheme(List(a), Tyfn(List(a, listType), listType)))
     env.put("nil",  "runtime/Nil", TypeScheme(List(a), listType))
+    
+    env.put("dict", "runtime/dict_of", TypeScheme(List(a, b), Tyfn(List(a, b), dictType)))
+    env.put("extend", "runtime/extend", TypeScheme(List(a, b), Tyfn(List(a, b, dictType), dictType)))
     
     env
   }

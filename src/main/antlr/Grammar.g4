@@ -16,6 +16,7 @@ expression : value
            | forward
            | binary
            | list
+           | map
            ;
 
 value : INTEGER 
@@ -45,7 +46,7 @@ cond : 'if' condition=expression 'then' exptrue=expression 'else' expfalse=expre
 forward : ID '::' ty=tydef
         ;
 
-tydef : CLASSID | ID | tydef '[' tydef ']' | tydef '->' tydef
+tydef : CLASSID | ID | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef
       ;
 
 binary : xleft=binexp op=BINOP right=binexp
@@ -60,6 +61,12 @@ binexp : value
 
 list : '[' expression (',' expression)* ']'
      ;
+
+map : '[' mappair (',' mappair)* ']'
+    ;
+
+mappair : mapkey=expression ':' mapvalue=expression
+        ;
 
 ID : [a-z][a-zA-Z0-9_\-]* ;
 CLASSID : [A-Z][a-zA-Z]* ;

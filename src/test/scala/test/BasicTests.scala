@@ -104,14 +104,42 @@ class BasicTests extends FunSuite {
     assert ("[4]" == ret.toString())
   }
   
-  test("lists") {
+  test("Syntactic sugar for lists") {
     val code = """
       def xs = [1, 2, 3]
       """
     val ret = run(code)
-    println(ret)
+    assert ("[1 2 3]" == ret.toString())
   }
-
+  
+  test("Dict and extend") {
+    val code = """
+      def m = dict("Name", "John")
+      extend("Surname", "Surjohn", m)
+      """
+    val ret = run(code)
+    assert("[Name:John, Surname:Surjohn]" == ret.toString())
+  }
+  
+  test("Syntactic sugar for maps") {
+    val code = """
+      def m = ["a":1, "b":2]
+      m
+      """
+    val ret = run(code)
+    assert("[b:2, a:1]" == ret.toString())
+  }
+  
+  test("Forwards, lists and maps") {
+    val code = """
+      a :: List[Int]
+      b :: Dict[Str, Int]
+      def a = [1, 2, 3]
+      def b = ["a": 1, "b": 2]
+      """
+    run(code) // assert no error
+  }
+  
   test("isa") {
     assert (Typer3.isa(Typer3.eqType, Typer3.intType))
   }

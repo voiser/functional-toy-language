@@ -137,5 +137,14 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     }
     cons(exprs)
   }
+  
+  override def visitMap(ctx: GrammarParser.MapContext) = {
+    val pairs = ctx.mappair().asScala.toList
+    def cons(exprs: List[GrammarParser.MappairContext]) : Node = exprs match {
+      case List(a) => fill(NApply("dict", List(visitExpression(a.mapkey), visitExpression(a.mapvalue))), ctx)
+      case x :: xs => fill(NApply("extend", List(visitExpression(x.mapkey), visitExpression(x.mapvalue), cons(xs))), ctx)
+    }
+    cons(pairs)
+  }
 }
 
