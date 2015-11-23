@@ -6,8 +6,9 @@ case class KlassConst(name: String) extends KlassRef
 case class KlassVar(name: String) extends KlassRef
 
 abstract class GTy
-case class GTycon(name: String) extends GTy
+case class GTycon(name: String, params: List[GTy]) extends GTy
 case class GTyfn(lefts: List[GTy], right: GTy) extends GTy
+case class GTyvar(name: String) extends GTy
 
 abstract class Node {
   var ty: Ty = null
@@ -46,7 +47,7 @@ case class Tyfn(in: List[Ty], out: Ty) extends Ty {
   override def repr = "(" + in.map{_.repr}.mkString(",") + " -> " + out.repr + ")"
 }
 case class Tycon(name: String, types: List[Ty], isa: List[Tycon]) extends Ty {
-  override def repr = name + (if (types.size == 0) "" else types.map { _.repr}.mkString("<", ",", ">"))
+  override def repr = name + (if (types.size == 0) "" else types.map { _.repr}.mkString("[", ",", "]"))
 } 
 case class Tyvar(name: String) extends Ty {
   override def repr = name 
@@ -73,6 +74,10 @@ class CodegenException(m: String) extends Exception(m)
 case class TypeScheme(tyvars: List[Tyvar], tpe: Ty) {
   def newInstance(gen: TyvarGenerator) : Ty = {
     (Typer3.emptySubst /: tyvars) ((s, tv) => s.extend(tv, gen.get())) (tpe)
+  }
+  
+  def applyTo(tys: List[Ty]) = {
+    (Typer3.emptySubst /: (tyvars zip tys)) ((s, tv) => s.extend(tv._1, tv._2)) (tpe)
   }
 }
 

@@ -93,6 +93,17 @@ class BasicTests extends FunSuite {
     assert ("24" == ret.toString())
   }
 
+  test("Generics and forward definitions") {
+    val code = """
+      g : a -> List[a]
+      def f = { x -> g(x) }
+      def g = { x -> list(x) }
+      f(4)
+      """
+    val ret = run(code)
+    assert ("[4]" == ret.toString())
+  }
+
   test("isa") {
     assert (Typer3.isa(Typer3.eqType, Typer3.intType))
   }

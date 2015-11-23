@@ -38,6 +38,26 @@ public interface TypegrammarListener extends ParseTreeListener {
 	 */
 	void exitSimple(TypegrammarParser.SimpleContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link TypegrammarParser#generic}.
+	 * @param ctx the parse tree
+	 */
+	void enterGeneric(TypegrammarParser.GenericContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TypegrammarParser#generic}.
+	 * @param ctx the parse tree
+	 */
+	void exitGeneric(TypegrammarParser.GenericContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link TypegrammarParser#var}.
+	 * @param ctx the parse tree
+	 */
+	void enterVar(TypegrammarParser.VarContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TypegrammarParser#var}.
+	 * @param ctx the parse tree
+	 */
+	void exitVar(TypegrammarParser.VarContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link TypegrammarParser#fn}.
 	 * @param ctx the parse tree
 	 */

@@ -44,7 +44,7 @@ cond : 'if' condition=expression 'then' exptrue=expression 'else' expfalse=expre
 forward : ID ':' ty=tydef
         ;
 
-tydef : CLASSID | '[' tydef ']' | tydef '->' tydef
+tydef : CLASSID | ID | tydef '[' tydef ']' | tydef '->' tydef
       ;
 
 binary : xleft=binexp op=BINOP right=binexp
