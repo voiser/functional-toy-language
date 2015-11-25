@@ -37,6 +37,7 @@ case class CreateModule(
     extends CodegenStep {
   def repr(d: Int) = margin(d) + "Module " + name + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
   def children = functions
+  def exportedFunctions = functions // we don't have private and public functions yet
 }
 case class CreateFunction(
     name: String,
@@ -47,7 +48,8 @@ case class CreateFunction(
     locals: List[CreateLocal], 
     instantiations: List[Instantiate], 
     initializations: List[Initialize], 
-    code: List[CodeStep])
+    code: List[CodeStep], 
+    tyrepr: String)
     extends CodegenStep {
   def repr(d: Int) = margin(d) + "Function " + name + " " + arity + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
   def children = constants ++ captures ++ externs ++ locals ++ instantiations ++ initializations ++ code
@@ -199,7 +201,7 @@ object Intermediate {
     val arity = function.root.params.length
     val constants = function.constants.map { x => CreateConstant(x._1, codegenType(x._2.ty), x._2) }
     val captures = function.captures.map { x => CreateCapture(x.name, codegenType(x.ty)) }
-    val externs = function.externs.map { x => CreateExtern(x._1, function.root.env.getFull(x._1), codegenType(x._2)) }
+    val externs = function.externs.map { x => CreateExtern(x._1, function.root.env.getFull(x._1).replace(".", "/"), codegenType(x._2)) }
     val locals = function.locals.map { x => CreateLocal(x._1, x._3, codegenType(x._2.ty)) }
 
     val allLocals = function.params ++ function.locals
@@ -230,7 +232,18 @@ object Intermediate {
     val code = function.root.value.children.map { x =>
       translate(unit, function, allLocals, externs, x) 
     }
-    CreateFunction(name, arity, constants, captures, externs, locals, instantiations, initializations, code)
+    val tyrepr = function.root.ty.repr
+    CreateFunction(
+        name, 
+        arity, 
+        constants, 
+        captures, 
+        externs, 
+        locals, 
+        instantiations, 
+        initializations, 
+        code, 
+        tyrepr)
   }
   
   def translate(

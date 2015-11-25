@@ -22,12 +22,12 @@ class CodegenTests extends FunSuite {
     val ret = Main.execute(unit.module.name, bytes)
   }
   
-  /*
   test("Intermediate") { // manual test
     val code = """
-      cons(1, nil)
+      import io.puts
+
+      puts(cons(1, nil))
       """
     intermediate(code)
   }
-  */
 }

@@ -15,7 +15,7 @@ abstract class Node {
   var position: (String, Int, Int) = null
   var env: Env = null
 }
-case class NModule(name: String, main: NFn) extends Node
+case class NModule(name: String, imports: List[(String, String)], main: NFn) extends Node
 case class NBlock(children: List[Node]) extends Node
 case class NInt(i: Int) extends Node
 case class NFloat(f: Float) extends Node
@@ -44,7 +44,10 @@ abstract class Ty {
   def repr: String
 }
 case class Tyfn(in: List[Ty], out: Ty) extends Ty {
-  override def repr = "(" + in.map{_.repr}.mkString(",") + " -> " + out.repr + ")"
+  override def repr = {
+    val i = in.map{_.repr}.mkString(",") 
+    "(" + (if (i == "") "()" else i) + " -> " + out.repr + ")"
+  }
 }
 case class Tycon(name: String, types: List[Ty], isa: List[Tycon]) extends Ty {
   override def repr = name + (if (types.size == 0) "" else types.map { _.repr}.mkString("[", ",", "]"))

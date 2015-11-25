@@ -1,7 +1,10 @@
 grammar Grammar;
 
-file  : 'module' name=ID ('import' imp=ID)* block
+file  : 'module' name=ID imp* block
       ;
+
+imp : 'import' IMPORT ('as' alias=ID)?
+       ;
 
 block : (expression) +
       ;
@@ -68,6 +71,7 @@ map : '[' mappair (',' mappair)* ']'
 mappair : mapkey=expression ':' mapvalue=expression
         ;
 
+IMPORT : [a-z\.]+ '.' [a-z][a-zA-Z0-9_\-]+ ;
 ID : [a-z][a-zA-Z0-9_\-]* ;
 CLASSID : [A-Z][a-zA-Z]* ;
 INTEGER : [0-9]+ ;

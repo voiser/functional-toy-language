@@ -39,8 +39,8 @@ class Typegrammar extends FunSuite {
   }
   
   test("Parse with vars") {
-    val code = "a -> List[a]"
-    val expected = "(a -> List[a])"
+    val code = "a,b -> List[a]"
+    val expected = "(a,b -> List[a])"
     assert (tree(code) == expected)
   }
 }

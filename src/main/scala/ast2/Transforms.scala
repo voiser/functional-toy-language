@@ -87,7 +87,7 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
     }
     val newlines = newdefs ++ main2.value.children
     val newf = NFn(module.main.params, fill(module.main.value, NBlock(newlines)))
-    val m2 = NModule(module.name, fill(module.main, newf))
+    val m2 = NModule(module.name, module.imports, fill(module.main, newf))
     fill(module, m2)
   }
   

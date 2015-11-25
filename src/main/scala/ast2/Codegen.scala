@@ -432,6 +432,53 @@ object Codegen {
     mv.visitEnd()
   }
   
+  /**
+   * Adds a static field containing the function metadata 
+   */
+  def addMetadata(cw: ClassWriter, module: CreateModule, uf: CreateFunction) {
+    val fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, "type", "Ljava/lang/String;", null, null);
+    fv.visitEnd();
+
+    val mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
+    mv.visitCode();
+    mv.visitLdcInsn(uf.tyrepr);
+    mv.visitFieldInsn(PUTSTATIC, slashedName(module, uf), "type", "Ljava/lang/String;");
+    
+    if (uf.name == "main") addExports(cw, mv, module, uf)
+    
+    mv.visitInsn(RETURN);
+    mv.visitMaxs(6, 0);
+    mv.visitEnd();
+  }
+  
+  /**
+   * Adds a static field containing the exported functions
+   */
+  def addExports(cw: ClassWriter, mv: MethodVisitor, module: CreateModule, uf: CreateFunction) {
+    val fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, "exports", "[Lruntime/Export;", null, null);
+    fv.visitEnd();
+    
+    val nExports = module.exportedFunctions.length
+    
+    mv.visitIntInsn(SIPUSH, nExports);
+    mv.visitTypeInsn(ANEWARRAY, "runtime/Export");
+    
+    ((0 to nExports-1) zip module.exportedFunctions).foreach { case (i, x) => 
+      mv.visitInsn(DUP);
+      mv.visitIntInsn(SIPUSH, i);
+      mv.visitTypeInsn(NEW, "runtime/Export");
+      mv.visitInsn(DUP);
+      mv.visitLdcInsn(x.name);
+      mv.visitMethodInsn(INVOKESPECIAL, "runtime/Export", "<init>", "(Ljava/lang/String;)V", false);
+      mv.visitInsn(AASTORE);
+    }
+    
+    mv.visitFieldInsn(PUTSTATIC, slashedName(module, uf), "exports", "[Lruntime/Export;");
+  }
+  
+  /**
+   * Guess what
+   */
   def slashedName(module: CreateModule, uf: CreateFunction) = module.name + "/" + uf.name
   
   /**
@@ -448,7 +495,10 @@ object Codegen {
     addConstructor(cw, module, f)
     addInitializer(cw, module, f)
     addApply(f.arity, cw, module, f)
-    if (f.name == "main") addEntryPoint(cw, module, f)
+    addMetadata(cw, module, f)
+    if (f.name == "main") {
+      addEntryPoint(cw, module, f)
+    }
     cw.visitEnd()
     cw.toByteArray()
     

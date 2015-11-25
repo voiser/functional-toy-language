@@ -42,7 +42,7 @@ object Main {
     env.put("id", "runtime/id", TypeScheme(List(a), Tyfn(List(a), a)))
     env.put("do", "runtime/do_", TypeScheme(List(a, b), Tyfn(List(Tyfn(List(a), b), a), b)))
     env.put("eq", "runtime/eq_", TypeScheme(List(), Tyfn(List(eq, eq), bool)))
-    env.put("puts", "runtime/puts", TypeScheme(List(), Tyfn(List(a), unit)))
+    //env.put("puts", "runtime/puts", TypeScheme(List(), Tyfn(List(a), unit)))
     
     env.put("list", "runtime/list_of", TypeScheme(List(a), Tyfn(List(a), listType)))
     env.put("cons", "runtime/cons", TypeScheme(List(a), Tyfn(List(a, listType), listType)))
@@ -54,6 +54,14 @@ object Main {
     env
   }
 
+  def parseType(code: String) = {
+    val lexer = new TypegrammarLexer(new ANTLRInputStream(code))
+    val parser = new TypegrammarParser(new CommonTokenStream(lexer))
+    val cst = parser.ty()
+    val gty = new TypeVisitor().visitTy(cst)
+    Typegrammar.toType(gty, Main.rootEnv)
+  }
+  
   def process(filename: String, code: String) = {
     
     // Build the CST
@@ -65,8 +73,21 @@ object Main {
     val module = new FirstVisitor(filename).visitFile(cst)
     module.main.name = "main"
 
+    // Generate the root environment
+    val rootEnvironment = rootEnv 
+    
+    // Imports
+    module.imports.foreach { case (realname, alias) => 
+      val klass = Class.forName(realname)
+      val field = klass.getField("type")
+      val functype = field.get(null).asInstanceOf[String]
+      val parsed = parseType(functype)
+      val tyvars = Typer3.tyvars(parsed)
+      rootEnvironment.put(alias, realname, TypeScheme(tyvars, parsed))
+    }
+    
     // Type the AST
-    Typer3.getType(rootEnv, module.main)
+    Typer3.getType(rootEnvironment, module.main)
 
     //show(module.main, code)
         

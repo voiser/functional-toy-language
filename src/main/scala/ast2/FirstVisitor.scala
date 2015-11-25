@@ -92,7 +92,14 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   
   override def visitFile(ctx: GrammarParser.FileContext) = {
     val f = fill(NFn(List(), visitBlock(ctx.block())), ctx)
-    fill(NModule(ctx.name.getText, f), ctx)
+    val imports = ctx.imp().asScala.toList.map { x => 
+      val realname = x.IMPORT.getText
+      val alias = 
+        if (x.alias != null) x.alias.getText
+        else realname.split("\\.").last
+      (realname, alias)
+    }
+    fill(NModule(ctx.name.getText, imports, f), ctx)
   }
   
   override def visitForward(ctx: GrammarParser.ForwardContext) = {

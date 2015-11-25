@@ -129,7 +129,7 @@ object Typer3 {
     val tysub = n match {
       
       case a @ NForward(name, gty) =>
-        val ty = Typegrammar.toType(gty, Main.rootEnv)
+        val ty = Typegrammar.toType(gty, env)
         env.put(name + "$$forward", ty)
         unify(t, ty, s, n)
       
