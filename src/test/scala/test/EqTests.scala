@@ -2,6 +2,7 @@ package test
 
 import org.scalatest.FunSuite
 import ast2._
+import intermediate.Intermediate
 
 /**
  * @author david
@@ -12,7 +13,8 @@ class EqTests extends FunSuite {
     val filename = "test"
     val modulename = "test"
     val unit = Main.process(filename, "module " + modulename + "\n" + code)
-    val bytes = Codegen2.codegen(unit)
+    val module = Intermediate.codegen(unit)
+    val bytes = Codegen.codegen(module)
     val ret = Main.execute(unit.module.name, bytes)
     ret
   }
