@@ -436,13 +436,21 @@ object Codegen {
    * Adds a static field containing the function metadata 
    */
   def addMetadata(cw: ClassWriter, module: CreateModule, uf: CreateFunction) {
-    val fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, "type", "Ljava/lang/String;", null, null);
-    fv.visitEnd();
+    
+    uf.metadata.foreach { 
+      case MetadataType(repr) =>
+        val fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, "type", "Ljava/lang/String;", null, null);
+        fv.visitEnd();
+    }
 
     val mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
     mv.visitCode();
-    mv.visitLdcInsn(uf.tyrepr);
-    mv.visitFieldInsn(PUTSTATIC, slashedName(module, uf), "type", "Ljava/lang/String;");
+    
+    uf.metadata.foreach { 
+      case MetadataType(repr) =>
+        mv.visitLdcInsn(repr);
+        mv.visitFieldInsn(PUTSTATIC, slashedName(module, uf), "type", "Ljava/lang/String;");
+    }
     
     if (uf.name == "main") addExports(cw, mv, module, uf)
     

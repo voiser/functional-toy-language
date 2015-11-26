@@ -3,6 +3,7 @@ grammar Typegrammar;
 ty : simple
    | generic
    | fn
+   | '(' fn ')'
    ;
 
 ty2 : simple

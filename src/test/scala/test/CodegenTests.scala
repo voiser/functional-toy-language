@@ -22,6 +22,7 @@ class CodegenTests extends FunSuite {
     val ret = Main.execute(unit.module.name, bytes)
   }
   
+  /*
   test("Intermediate") { // manual test
     val code = """
       import io.puts
@@ -30,4 +31,5 @@ class CodegenTests extends FunSuite {
       """
     intermediate(code)
   }
+  */
 }

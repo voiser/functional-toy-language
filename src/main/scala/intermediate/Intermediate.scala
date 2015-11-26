@@ -49,10 +49,10 @@ case class CreateFunction(
     instantiations: List[Instantiate], 
     initializations: List[Initialize], 
     code: List[CodeStep], 
-    tyrepr: String)
+    metadata: List[CodegenMetadata])
     extends CodegenStep {
   def repr(d: Int) = margin(d) + "Function " + name + " " + arity + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
-  def children = constants ++ captures ++ externs ++ locals ++ instantiations ++ initializations ++ code
+  def children = metadata ++ constants ++ captures ++ externs ++ locals ++ instantiations ++ initializations ++ code
 }
 abstract class SingleCodegenStep extends CodegenStep {
   def children() = List()
@@ -83,6 +83,13 @@ case class CreateLocal(
     ty: CodegenType)
     extends SingleCodegenStep {
   def repr(d: Int) = margin(d) + "Local " + index + " " + name + " " + ty
+}
+abstract class CodegenMetadata extends CodegenStep
+case class MetadataType(
+    ty: String)
+    extends CodegenMetadata {
+  def repr(d: Int) = margin(d) + "MetadataType " + ty
+  def children = List()
 }
 case class Instantiate(
     name: String, 
@@ -212,6 +219,7 @@ object Intermediate {
         val local = flocal(name, allLocals)
         Instantiate(destname, local)
     }
+    
     val initializations = function.root.value.children.collect {
       case NDef(name, v: NFn) =>
         val destname = unit.module.name + "/" + v.name
@@ -232,7 +240,10 @@ object Intermediate {
     val code = function.root.value.children.map { x =>
       translate(unit, function, allLocals, externs, x) 
     }
-    val tyrepr = function.root.ty.repr
+    
+    val metaType = MetadataType(function.root.ty.repr)
+    val metadata = metaType :: List()
+
     CreateFunction(
         name, 
         arity, 
@@ -243,7 +254,7 @@ object Intermediate {
         instantiations, 
         initializations, 
         code, 
-        tyrepr)
+        metadata)
   }
   
   def translate(
