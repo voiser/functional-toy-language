@@ -1,6 +1,10 @@
 package ast2
 
 /**
+ * This type checker is based in the fantastic Martin Odersky's implementation of Hindley Milner  
+ * 
+ * http://www.scala-lang.org/docu/files/ScalaByExample.pdf 
+ * 
  * @author david
  */
 
@@ -12,7 +16,6 @@ class TyvarGenerator(prefix: String) {
     Tyvar(prefix + n, List[String]())
   }
 }
-
 
 object Typer3 {
   
@@ -70,42 +73,14 @@ object Typer3 {
     def repr = ""
   }
   
-  /*
-  def isa(t1: Tycon, t2: Tycon) = {
-    def extract(t: List[Tycon], acc: List[Tycon]) : List[Tycon] = t match {
-      case x :: List(xs) =>
-        x :: extract(x.isa, List()) ++ acc
-        
-      case List(x) =>
-        x :: extract(x.isa, List())
-        
-      case List() =>
-        List()
-    }
-    
-    val all = t2 :: extract(t2.isa, List())
-    all.contains(t1)
-  }
-
-  
-  def common(t1: Ty, t2: Ty, n: Node) = (t1, t2) match {
-    case (a : Tycon, b : Tycon) =>     
-      if (isa(a, b)) b
-      else if (isa(b, a)) a
-      else throw new TypeException("Can't find common parent of " + t1 + " and " + t2, n)
-    case _ =>
-      throw new TypeException("Can't find common parent of " + t1 + " and " + t2, n)
-  }
-  * 
-  */
-  
   /**
    * 
    */
   
-  def unify(t1: Ty, t2: Ty, s: Subs, n: Node, gen: TyvarGenerator) : Subs = {
+  def unify(t1: Ty, t2: Ty, s: Subs, n: Node, gen: TyvarGenerator, trace: List[String]) : Subs = {
     val s1 = s(t1)
     val s2 = s(t2)
+    val tr = mktrace("When unifying " + t2 + "(" + s1 + ") with " + t1 + "(" + s2 + ")", n, trace)
     (s1, s2) match {
       
       case (a @ Tyvar(na, List()), b @ Tyvar(nb, _)) =>
@@ -113,7 +88,7 @@ object Typer3 {
         else s.extend(a, b)
           
       case (_, a @ Tyvar(na, List())) =>
-        unify(t2, t1, s, n, gen)
+        unify(t2, t1, s, n, gen, tr)
       
       case (a @ Tyvar(na, resa), b @ Tyvar(nb, resb)) => 
         val allRestrictions = (resa ++ resb).distinct
@@ -121,13 +96,10 @@ object Typer3 {
         s.extend(a, newTyvar).extend(b, newTyvar)  
       
       case (a @ Tyvar(name, res), x @ Tycon(nam, tv, res1)) if !(tyvars(x) contains a) =>
-        //println("****** I have to guarantee that " + x + " meets the restrictions " + res)
         val res2 = res1.flatMap { z => z.all }.distinct
         res.foreach { z => 
-          //println("Does " + x.repr + " guarantee " + z + "?")
-          //println("  res2 = " + res2)
           if (!res2.contains(z)) 
-            throw new TypeException("Can't unify " + s1.repr + " with " + s2.repr + ": The type " + x.repr + " does not guarantee " + z, n)
+            throw new TypeException("Can't unify " + s1.repr + " with " + s2.repr + ": The type " + x.repr + " does not guarantee " + z, n, trace)
         }
         s.extend(a, x)
 
@@ -135,88 +107,81 @@ object Typer3 {
         s.extend(a, x)
 
       case (a @ Tyvar(name, res), x) if !(tyvars(x) contains a) =>
-        println("****** I have to guarantee that " + x + " meets the restrictions " + res)
-        throw new Exception("lalilo")
+        throw new TypeException("TODO: I have to guarantee that " + x + " meets the restrictions " + res, n, trace)
         
       case (Tyfn(in1, out1), Tyfn(in2, out2)) =>
-        if (in1.length != in2.length) throw new TypeException("Arguments do not match: " + in1.length + " vs " + in2.length, n)
-        val s1 = (s /: (in1 zip in2)) ((s, tu) => unify(tu._1, tu._2, s, n, gen))
-        unify(out1, out2, s1, n, gen)
+        if (in1.length != in2.length) throw new TypeException("Arguments do not match. Given " + in1.length + ", required " + in2.length, n, trace)
+        val s1 = (s /: (in1 zip in2)) ((s, tu) => unify(tu._1, tu._2, s, n, gen, tr))
+        unify(out1, out2, s1, n, gen, tr)
         
       case (Tycon(n1, tv1, isa1), Tycon(n2, tv2, isa2)) if (n1 == n2) =>
-        (s /: (tv1 zip tv2)) ((s, tu) => unify(tu._1, tu._2, s, n, gen))
+        (s /: (tv1 zip tv2)) ((s, tu) => unify(tu._1, tu._2, s, n, gen, tr))
       
-      case _ => throw new TypeException("Can't unify " + s1.repr + " with " + s2.repr, n)
+      case _ => throw new TypeException("Can't unify " + s1.repr + " with " + s2.repr, n, trace)
     }
   }
   
   /**
    * 
    */
-  def tp(env: Env, n: Node, t: Ty, gen: TyvarGenerator, s: Subs) : Subs = {
+  def tp(env: Env, n: Node, t: Ty, gen: TyvarGenerator, s: Subs, trace: List[String]) : Subs = {
     n.env = env
+    
+    def trac(s: String) = mktrace(s, n, trace)
+    
     val tysub = n match {
       
       case a @ NForward(name, gty) =>
         val ty = Typegrammar.toType(gty, env)
         env.put(name + "$$forward", ty)
-        unify(t, ty, s, n, gen)
+        unify(t, ty, s, n, gen, trac("When typing forward definition"))
       
-      case a : NInt => unify(t, intType, s, n, gen)
-      case a : NFloat => unify(t, floatType, s, n, gen)
-      case a : NString => unify(t, stringType, s, n, gen)
+      case a : NInt => unify(t, intType, s, n, gen, trac("When typing Int"))
+      case a : NFloat => unify(t, floatType, s, n, gen, trac("When typing Float"))
+      case a : NString => unify(t, stringType, s, n, gen, trac("When typing String"))
       
       case a @ NRef(name) =>
         val u = env.get(name)
         u match {
-          case None => throw new TypeException("Can't find '" + name + "' in the environment", n)
-          case Some(typescheme) => unify(t, typescheme.newInstance(gen), s, n, gen)
+          case None => throw new TypeException("Can't find '" + name + "' in the environment", n, trace)
+          case Some(typescheme) => unify(t, typescheme.newInstance(gen), s, n, gen, trac("When typing a reference to " + name))
         }
 
       case a @ NDef(name, ex) =>
         val u = env.get(name)
         u match {
-          case Some(typescheme) => throw new TypeException("'" + name + "' is already defined", n)
+          case Some(typescheme) => throw new TypeException("'" + name + "' is already defined", n, trac("When typing the definition of " + name))
           case None =>
-            // is there a forward definition?
             env.get(name + "$$forward") match {
               case Some(ts) =>
-                // There is a forward definition. 
-                // if we are defining a function, it can't have typed params 
-                
                 ex match {
                   case x @ NFn(params, ex) =>
                     if (x.hasTypedArgs) 
-                      throw new TypeException("Function " + name + " can't have typed arguments because it has a forward definition", a)
+                      throw new TypeException("Function " + name + " can't have typed arguments because it has a forward definition", a, trac("When typing the definition of " + name))
                     
                   case _ =>
                 }
-                
                 val forward = ts.newInstance(gen)
                 val env1 = env
                 env1.put(name, forward)
-                //
-                val s1 = tp(env1, ex, t, gen, s)
-                //val computed = s1(t)
-
-                //println("The expression type is " + t)
-                //println("The forward definition of " + name + " is " + forward.repr)
-                //println("The computed type of " + name + " is " + computed.repr)
-                
-                //val s2 = unify(t, computed, s, n)
-                //println("s2 = " + s2)
-                
-                //val r = unify(computed, forward, s2, n)
-                //println("r = " + r(t).repr)
-                s1
-                
+                val s1 = tp(env1, ex, t, gen, s, trac("Typing function with forward definition"))
+                val computed = s1(t)
+                val s2 = unify(forward, computed, s1, n, gen, trac("When typing the definition of " + name + " with a forward declaration"))
+                env1.put(name, s2(t))
+                ex match {
+                  case x @ NFn(params, ex) =>
+                    x.ty = s2(t)
+                    
+                  case _ =>
+                }
+                s2
                 
               case None =>
                 val env1 = env
                 val a = gen.get()
                 env1.put(name, a)
             
-                val s1 = tp(env1, ex, t, gen, s)
+                val s1 = tp(env1, ex, t, gen, s, trac("When typing function " + name))
                 env.put(name, s1(t))
                 s1
             }
@@ -226,11 +191,10 @@ object Typer3 {
         def f(p: NFnArg) : Ty = {
           val n = p.name
           val t = p.klass
-          //val tt = gen.get()
           t match {
             case KlassConst(name) => 
               env.getType(name) match {
-                case None => throw new TypeException("No type " + name + " defined", x)
+                case None => throw new TypeException("No type " + name + " defined", x, trac("When typing a function body"))
                 case Some(tt) => tt
               }
             case KlassVar(name) => gen.get() 
@@ -238,104 +202,67 @@ object Typer3 {
         }
         val a = params.map { x => f(x) }
         val b = gen.get()
-        val s1 = unify(t, Tyfn(a, b), s, n, gen)
+        val s1 = unify(t, Tyfn(a, b), s, n, gen, trac("When typing a function body"))
         val env1 = Env(env, n)
         (params zip a).foreach { x => env1.put(x._1.name, null, TypeScheme(List(), x._2)) }
-        tp(env1, ex, b, gen, s1)
+        tp(env1, ex, b, gen, s1, trac("When typing function body"))
         
       case x @ NApply(name, args) => 
         val a = args.map { x => gen.get() }
-        val candidates = env.get2(name).map { _._1}
-        //println ("OK I have several candidates, let's try one by one...")
-        val cands = candidates.map { candidate =>
-          //println("  Trying candidate " + candidate)
-          try {
-            val r = NRef(candidate)
-            r.position = x.position
-            val s1 = tp(env, r, Tyfn(a, t), gen, s)
-            val s2 = (s1 /: (args zip a)) ((s2, arg) => tp(env, arg._1, arg._2, gen, s2))
-            //println("  This one worked")
-            (candidate, s2)
-          } 
-          catch {
-            case e: NoCandidateException =>
-              throw e
-              
-            case e: TypeException => 
-              //println("  This one did NOT work " + e)
-              //e.printStackTrace()
-              null
-          }
-        }.filterNot { _ == null }
+        val candidates = env.get2(name).map { _._1}.sortBy { x => x.length }
         
-        val candsnames = cands.map(_._1)
-        val fwd = name + "$$forward"
-        val finalcands = 
-          if (cands.length == 2 && candsnames.contains(fwd)) cands.filterNot(_._1 == fwd)
-          else cands
-        
-        if (finalcands.length == 0) throw new NoCandidateException("No candidates for '" + name + "'", n)
-        else if (finalcands.length > 1) throw new NoCandidateException("Too many candidates for '" + name + "'", n)
-        else {
-          x.realName = finalcands(0)._1.replace("$$forward", "")
-          finalcands(0)._2
+        def typ(n: String) = {
+          val r = NRef(n)
+          r.position = x.position
+          val s1 = tp(env, r, Tyfn(a, t), gen, s, trac("When typing function call " + name))
+          val s2 = (s1 /: (args zip a)) ((s2, arg) => tp(env, arg._1, arg._2, gen, s2, trac("When typing call argument")))
+          s2
         }
-                
+        candidates match {
+          case List() =>
+            throw new TypeException("Can't find definition of '" + name + "'", n, trac("When typing a function call"))
+          case List(n) =>
+            x.realName = n.replace("$$forward", "")
+            typ(n)
+          case List(a, b) if (b == a + "$$forward") =>
+            x.realName = a
+            typ(a)
+          case _ =>
+            throw new TypeException("Too many candidates for '" + name + "'. This is a compiler bug", n, trac("When typing a function call"))
+        }
+        
       case NIf(cond, e1, e2) =>
         val a, b, c = gen.get()
-        
-        //println("starting = " + s)
-        
-        //val condenv = Env(env, cond)
-        //val trueenv = Env(env, e1)
-        //val falsenv = Env(env, e2)
-        
-        val condenv = env
-        val trueenv = env
-        val falsenv = env
-        
-        val conds = tp(condenv, cond, a, gen, s)
-        val trues = tp(trueenv, e1, b, gen, conds)
-        val falss = tp(falsenv, e2, c, gen, trues)
-        
-        //println("Variables are " + t.repr + " " + (a.repr, b.repr, c.repr))
-        //println("conds  = " + conds)
-        //println("trues  = " + trues)
-        //println("falses = " + falss)
-        //println("x      = " + env.get("x"))
-        
-        val s2 = unify(a, boolType, falss, n, gen)
-        val s3 = unify(b, c, falss, n, gen)
-        val s4 = unify(t, s3(b), s3, n, gen)
-        //println("s4     = " + s4)
-        
+        val conds = tp(env, cond, a, gen, s, trac("When typing a condition"))
+        val trues = tp(env, e1, b, gen, conds, trac("When typing a true branch"))
+        val falss = tp(env, e2, c, gen, trues, trac("When typing a false branch"))
+        val s2 = unify(a, boolType, falss, n, gen, trac("When typing a condition"))
+        val s3 = unify(b, c, falss, n, gen, trac("When typing a true branch"))
+        val s4 = unify(t, s3(b), s3, n, gen, trac("When typing a false branch"))
         s4
         
       case NBlock(exs) =>
-        //val env1 = Env(env, n)
         val env1 = env
         var b: Tyvar = null
         val s1 = (s /: exs) { (s2, ex) =>
           b = gen.get()
-          //println("I'm typing a block expression " + b + " " + ex)
-          val x = tp(env1, ex, b, gen, s2)
-          //println ("Result: " + x)
+          val x = tp(env1, ex, b, gen, s2, mktrace("When typing a code block", n, trace))
           x
         }
-        unify(t, s1(b), s1, n, gen)
+        unify(t, s1(b), s1, n, gen, trac("When typing a code block"))
         
-      case _ => throw new TypeException("Can't type node " + n, n)
+      case _ => throw new TypeException("Can't type node " + n, n, trac("When typing a generic node"))
     }
     n.ty = tysub(t)
     tysub
   }
   
+  def mktrace(t: String, n: Node, trace: List[String]) = t + " - at " + n.position._1 + " line " + n.position._2 :: trace
+  
   def getType(env: Env, n: Node) = {
     val gen = new TyvarGenerator("t")
     val rootVar = gen.get()
-    val subs = tp(env, n, rootVar, gen, emptySubst)
-    //val x = subs(rootVar)
-    //x
+    val subs = tp(env, n, rootVar, gen, emptySubst, mktrace("Typing", n, List()))
     n.ty
   }  
 }

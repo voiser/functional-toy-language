@@ -25,10 +25,11 @@ class CodegenTests extends FunSuite {
   
   /*
   test("Intermediate") { // manual test
-//      g :: Int -> Int
     val code = """
-      def f = { x, y -> 1 }
-      f(4, 9)
+      f :: Int, Int -> Int
+      def g = { a, b -> f(a, b) }
+      def f = { x, y -> x }
+      g("a")
       """
     intermediate(code)
   }

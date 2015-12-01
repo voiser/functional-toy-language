@@ -69,13 +69,12 @@ object Tycon {
 }
 
 class ParseException(m: String) extends Exception(m)
-class TypeException(m: String, node: Node) extends Exception(m) {
+class TypeException(m: String, node: Node, trace: List[String]) extends Exception(m) {
   override def getMessage() = {
     if (node.position == null) println ("This node has no position: " + node)
-    m + " at " + node.position._1 + " Line " + node.position._2 
+    m + " - at " + node.position._1 + " Line " + node.position._2 + trace.mkString("\n", "\n", "\n")
   }
 }
-class NoCandidateException(m: String, node: Node) extends TypeException(m, node)
 class CodegenException(m: String) extends Exception(m)
 
 
