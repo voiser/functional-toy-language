@@ -51,7 +51,7 @@ object Typegrammar {
   def toType(ty: GTy, env: Env) : Ty = ty match {
     
     case GTyvar(name) =>
-      Tyvar(name)
+      Tyvar(name, List())
     
     case GTycon(name, params) =>
       env.getType(name) match {
@@ -65,7 +65,6 @@ object Typegrammar {
             val typarams = params map { x => toType(x, env) }
             ts.applyTo(typarams)
             
-          case _ => throw new TypegrammarException("Can't match type arguments of " + ty + " and " + ty)
         }
       }
       

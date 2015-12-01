@@ -8,11 +8,12 @@ object Main {
 
   def rootEnv = {
     val env = Env()
-    val a = Tyvar("a")
-    val b = Tyvar("b")
+    val a = Tyvar("a", List())
+    val b = Tyvar("b", List())
     
     val eq = Typer3.eqType
     val num = Typer3.numType
+    
     val int = Typer3.intType
     val float = Typer3.floatType
     val bool = Typer3.boolType
@@ -21,8 +22,12 @@ object Main {
     val listType = Tycon("List", List(a), List())
     val dictType = Tycon("Dict", List(a, b), List())
     
-    env.putType("Eq", eq)
-    env.putType("Num", num)
+    env.putRestriction("Eq", eq)
+    env.putRestriction("Num", num)
+
+    val aeq = Tyvar("aeq", eq.all)
+    val anum = Tyvar("anum", num.all)
+    
     env.putType("Int", int)
     env.putType("Float", float)
     env.putType("Bool", bool)
@@ -34,14 +39,14 @@ object Main {
     env.put("true", "runtime/True", TypeScheme(List(), bool))
     env.put("false", "runtime/False", TypeScheme(List(), bool))
 
-    env.put("add", "runtime/add", TypeScheme(List(), Tyfn(List(num, num), num)))
-    env.put("sub", "runtime/sub", TypeScheme(List(), Tyfn(List(num, num), num)))
-    env.put("times", "runtime/times", TypeScheme(List(), Tyfn(List(num, num), num)))
-    env.put("div", "runtime/div", TypeScheme(List(), Tyfn(List(num, num), num)))
+    env.put("add", "runtime/add", TypeScheme(List(), Tyfn(List(anum, anum), anum)))
+    env.put("sub", "runtime/sub", TypeScheme(List(), Tyfn(List(anum, anum), anum)))
+    env.put("times", "runtime/times", TypeScheme(List(), Tyfn(List(anum, anum), anum)))
+    env.put("div", "runtime/div", TypeScheme(List(), Tyfn(List(anum, anum), anum)))
 
     env.put("id", "runtime/id", TypeScheme(List(a), Tyfn(List(a), a)))
     env.put("do", "runtime/do_", TypeScheme(List(a, b), Tyfn(List(Tyfn(List(a), b), a), b)))
-    env.put("eq", "runtime/eq_", TypeScheme(List(), Tyfn(List(eq, eq), bool)))
+    env.put("eq", "runtime/eq_", TypeScheme(List(), Tyfn(List(aeq, aeq), bool)))
     //env.put("puts", "runtime/puts", TypeScheme(List(), Tyfn(List(a), unit)))
     
     env.put("list", "runtime/list_of", TypeScheme(List(a), Tyfn(List(a), listType)))
@@ -89,7 +94,7 @@ object Main {
     // Type the AST
     Typer3.getType(rootEnvironment, module.main)
 
-    //show(module.main, code)
+    // show(module.main, code)
         
     // Name all named functions
     // new FunctionNamerVisitor(module)

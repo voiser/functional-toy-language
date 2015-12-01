@@ -15,7 +15,8 @@ class CodegenTests extends FunSuite {
   def intermediate(code: String) = {
     val filename = "test"
     val modulename = "test"
-    val unit = Main.process(filename, "module " + modulename + "\n" + code)
+    val code2 = "module " + modulename + "\n" + code
+    val unit = Main.process(filename, code2)
     val module = Intermediate.codegen(unit)
     println(module)
     val bytes = Codegen.codegen(module)
@@ -24,10 +25,10 @@ class CodegenTests extends FunSuite {
   
   /*
   test("Intermediate") { // manual test
+//      g :: Int -> Int
     val code = """
-      import io.puts
-
-      puts(cons(1, nil))
+      def f = { x, y -> 1 }
+      f(4, 9)
       """
     intermediate(code)
   }

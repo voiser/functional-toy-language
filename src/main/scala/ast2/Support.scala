@@ -1,6 +1,5 @@
 package ast2
 
-
 abstract class KlassRef
 case class KlassConst(name: String) extends KlassRef
 case class KlassVar(name: String) extends KlassRef
@@ -29,6 +28,7 @@ case class NFn(params: List[NFnArg], value: NBlock) extends Node {
   // def f = {...} ---> name = envx$f, defname = f
   var name: String = null
   var defname: String = null
+  def hasTypedArgs = params.map { x => x.klass }.map { _.isInstanceOf[KlassConst] }.foldLeft(false)((a, b) => a || b)
 }
 case class NApply(name: String, params: List[Node]) extends Node {
   // add(1, 1) ---> name = add, realname = add$a
@@ -40,6 +40,11 @@ case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
 case class NForward(name: String, tydef: GTy) extends Node
 
 
+case class Restriction(name: String, isa: List[Restriction]) {
+  def repr: String = "+" + name
+  def all : List[String] = name :: isa.flatMap { x => x.all }
+}
+
 abstract class Ty {
   def repr: String
 }
@@ -49,11 +54,11 @@ case class Tyfn(in: List[Ty], out: Ty) extends Ty {
     "(" + (if (i == "") "()" else i) + " -> " + out.repr + ")"
   }
 }
-case class Tycon(name: String, types: List[Ty], isa: List[Tycon]) extends Ty {
+case class Tycon(name: String, types: List[Ty], restrictions: List[Restriction]) extends Ty {
   override def repr = name + (if (types.size == 0) "" else types.map { _.repr}.mkString("[", ",", "]"))
 } 
-case class Tyvar(name: String) extends Ty {
-  override def repr = name 
+case class Tyvar(name: String, restrictions: List[String]) extends Ty {
+  override def repr = name + restrictions.map {"+" + _.repr}.mkString("")
 }
 case class TyAny() extends Ty {
   override def repr = "Any"
@@ -103,13 +108,21 @@ class Env(var id: String, val parent: Env, introducedBy: Node) {
   val names = scala.collection.mutable.Map[String, TypeScheme]()
   val fullnames = scala.collection.mutable.Map[String, String]()
   val types = scala.collection.mutable.Map[String, Ty]()
+  val restrictions = scala.collection.mutable.Map[String, Restriction]()
   
   def allFull = fullnames ++ (if (parent != null) parent.fullnames else Map())
   def allNames = names ++ (if (parent != null) parent.names else Map())
  
-  def putType(name: String, ty: Ty) {
-    types.put(name, ty)
+  def putRestriction(name: String, res: Restriction) = restrictions.put(name, res)
+
+  def getRestriction(name: String) : Option[Restriction] = restrictions.get(name) match {
+    case x : Some[Restriction] => x
+    case None =>
+      if (parent != null) parent.getRestriction(name)
+      else None
   }
+  
+  def putType(name: String, ty: Ty) = types.put(name, ty)
 
   def getType(name: String) : Option[Ty] = types.get(name) match {
     case x:Some[Ty] => x

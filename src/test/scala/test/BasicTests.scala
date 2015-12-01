@@ -142,7 +142,31 @@ class BasicTests extends FunSuite {
     run(code) // assert no error
   }
   
-  test("isa") {
-    assert (Typer3.isa(Typer3.eqType, Typer3.intType))
+  test("Typed params") {
+    val code = """
+      def f = { a Int, b Int -> a + b }
+      f(1, 2)
+      """
+    val ret = run(code)
+    assert("3" == ret.toString())
   }
+
+  test("Typed params and forwards") {
+    val code = """
+      f :: Int, Int -> Int
+      def f = { a Int, b Int -> a + b }
+      f(1, 2)
+      """
+    try {
+      run(code)
+    }
+    catch {
+      case e: TypeException =>
+        assert (e.getMessage().contains("can't have typed arguments"))
+    }
+  }
+
+  //test("isa") {
+  //  assert (Typer3.isa(Typer3.eqType, Typer3.intType))
+  //}
 }
