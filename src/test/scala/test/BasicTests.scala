@@ -165,8 +165,4 @@ class BasicTests extends FunSuite {
         assert (e.getMessage().contains("can't have typed arguments"))
     }
   }
-
-  //test("isa") {
-  //  assert (Typer3.isa(Typer3.eqType, Typer3.intType))
-  //}
 }

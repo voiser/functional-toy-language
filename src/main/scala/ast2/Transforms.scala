@@ -4,7 +4,7 @@ class Transformer {
   
   def fill[T<:Node](origin: T, dest: T): T = {
     dest.env = origin.env
-    dest.position = origin.position
+    dest.ctx = origin.ctx
     dest.ty = origin.ty
     
     (origin, dest) match {

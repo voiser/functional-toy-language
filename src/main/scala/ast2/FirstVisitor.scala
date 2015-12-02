@@ -14,7 +14,8 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   def fill[T <: Node](n: T, c: ParserRuleContext) = {
     val line = c.start.getLine
     val column = c.start.getCharPositionInLine
-    n.position = (filename, line, column)
+    n.filename = filename
+    n.ctx = c
     n
   }
   

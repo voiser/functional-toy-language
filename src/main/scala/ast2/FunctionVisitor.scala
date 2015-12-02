@@ -151,7 +151,7 @@ class FetchRefsVisitor(root: NFn) extends Visitor {
       //println ("  " + root.defname + " " + n.name)
       val r = NRef(n.name)
       r.env = e1
-      r.position = n.position
+      r.ctx = n.ctx
       r.ty = e1.get(n.name).get.tpe
       if (root.defname == n.name) {
         //println ("  This is a recursive call")

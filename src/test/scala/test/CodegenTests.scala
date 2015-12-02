@@ -16,22 +16,28 @@ class CodegenTests extends FunSuite {
     val filename = "test"
     val modulename = "test"
     val code2 = "module " + modulename + "\n" + code
-    val unit = Main.process(filename, code2)
-    val module = Intermediate.codegen(unit)
-    println(module)
-    val bytes = Codegen.codegen(module)
-    val ret = Main.execute(unit.module.name, bytes)
+    
+    try {
+      val unit = Main.process(filename, code2)
+      val module = Intermediate.codegen(unit)
+      println(module)
+      val bytes = Codegen.codegen(module)
+      val ret = Main.execute(unit.module.name, bytes)
+    } 
+    catch {
+      case e: TypeException =>
+        Main.showException(e, code2)
+    }
   }
   
-  /*
   test("Intermediate") { // manual test
     val code = """
       f :: Int, Int -> Int
-      def g = { a, b -> f(a, b) }
-      def f = { x, y -> x }
-      g("a")
+      def f = { a Int, b Int -> 
+        a + b 
+      }
+      f(1, 2)
       """
     intermediate(code)
   }
-  */
 }

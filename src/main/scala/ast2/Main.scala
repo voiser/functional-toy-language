@@ -140,7 +140,7 @@ object Main {
     def show0(n: Node, d: Int) {
     
       def rep(s: String) {
-        val position = n.position._1 + " Line " + n.position._2
+        val position = n.filename + " Line " + n.line
         val prefix = "  " * d + " " + s + " :: " + (if (n.ty != null) n.ty.repr else "(none yet)") 
         val infix = if (prefix.length() < 50) " " * (5 + (50 - prefix.length())) else "     "
         val suffix1 = "at " + position + " "
@@ -176,8 +176,22 @@ object Main {
           rep(n.toString())
       }
     }
-    
     show0(n, 0)
   }
-
+  
+  def showLine(codelines: Array[String], message: String, node: Node) = {
+    println("At " + node.filename + ":" + node.line + " - " + message)
+    println(codelines(node.line - 1))
+    println(" " * node.column + "^" * node.charsize) 
+  }
+  
+  def showException(e: TypeException, code: String) = {
+    val codelines = code.split("\n")
+    println("\n** Type error **")
+    showLine(codelines, e.getMessage, e.node)
+    e.trace.reverse.foreach { x =>
+      showLine(codelines, x.message, x.node)
+    }
+    println()
+  }
 }

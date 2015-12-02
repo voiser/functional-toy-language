@@ -1,5 +1,7 @@
 package ast2
 
+import org.antlr.v4.runtime.ParserRuleContext
+
 abstract class KlassRef
 case class KlassConst(name: String) extends KlassRef
 case class KlassVar(name: String) extends KlassRef
@@ -10,9 +12,13 @@ case class GTyfn(lefts: List[GTy], right: GTy) extends GTy
 case class GTyvar(name: String) extends GTy
 
 abstract class Node {
+  var filename: String = null
+  var ctx: ParserRuleContext = null
   var ty: Ty = null
-  var position: (String, Int, Int) = null
   var env: Env = null
+  def line = if (ctx == null) 0 else ctx.start.getLine
+  def column = if (ctx == null) 0 else ctx.start.getCharPositionInLine
+  def charsize = if (ctx == null) 0 else ctx.getText.length() + 1
 }
 case class NModule(name: String, imports: List[(String, String)], main: NFn) extends Node
 case class NBlock(children: List[Node]) extends Node
@@ -28,7 +34,10 @@ case class NFn(params: List[NFnArg], value: NBlock) extends Node {
   // def f = {...} ---> name = envx$f, defname = f
   var name: String = null
   var defname: String = null
-  def hasTypedArgs = params.map { x => x.klass }.map { _.isInstanceOf[KlassConst] }.foldLeft(false)((a, b) => a || b)
+  def typedArgs = params.collect { 
+    case x @ NFnArg(_, KlassConst(_)) => x 
+  }
+  def hasTypedArgs = typedArgs.length > 0
 }
 case class NApply(name: String, params: List[Node]) extends Node {
   // add(1, 1) ---> name = add, realname = add$a
@@ -69,12 +78,7 @@ object Tycon {
 }
 
 class ParseException(m: String) extends Exception(m)
-class TypeException(m: String, node: Node, trace: List[String]) extends Exception(m) {
-  override def getMessage() = {
-    if (node.position == null) println ("This node has no position: " + node)
-    m + " - at " + node.position._1 + " Line " + node.position._2 + trace.mkString("\n", "\n", "\n")
-  }
-}
+class TypeException(m: String, val node: Node, val trace: List[TraceElement]) extends Exception(m)
 class CodegenException(m: String) extends Exception(m)
 
 
@@ -108,10 +112,21 @@ class Env(var id: String, val parent: Env, introducedBy: Node) {
   val fullnames = scala.collection.mutable.Map[String, String]()
   val types = scala.collection.mutable.Map[String, Ty]()
   val restrictions = scala.collection.mutable.Map[String, Restriction]()
+  val forwards = scala.collection.mutable.Map[String, NForward]()
   
   def allFull = fullnames ++ (if (parent != null) parent.fullnames else Map())
   def allNames = names ++ (if (parent != null) parent.names else Map())
  
+  def putForward(name: String, node: NForward) = forwards.put(name, node)
+
+  def getForward(name: String) : Option[NForward] = forwards.get(name) match {
+    case x : Some[NForward] => x
+    case None =>
+      if (parent != null) parent.getForward(name)
+      else None
+  }
+
+  
   def putRestriction(name: String, res: Restriction) = restrictions.put(name, res)
 
   def getRestriction(name: String) : Option[Restriction] = restrictions.get(name) match {
