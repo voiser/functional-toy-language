@@ -2,6 +2,7 @@ grammar Typegrammar;
 
 ty : simple
    | generic
+   | var
    | fn
    | '(' fn ')'
    ;
@@ -18,8 +19,11 @@ simple : ID
 generic : ID '[' ty2 (',' ty2)*  ']'
         ;
 
-var : VAR
+var : VAR restriction*
     ;
+
+restriction : '+' ID
+            ;
 
 fn : left (',' left)* '->' right=ty2 
    ;

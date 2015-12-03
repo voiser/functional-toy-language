@@ -58,6 +58,16 @@ public interface TypegrammarListener extends ParseTreeListener {
 	 */
 	void exitVar(TypegrammarParser.VarContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link TypegrammarParser#restriction}.
+	 * @param ctx the parse tree
+	 */
+	void enterRestriction(TypegrammarParser.RestrictionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link TypegrammarParser#restriction}.
+	 * @param ctx the parse tree
+	 */
+	void exitRestriction(TypegrammarParser.RestrictionContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link TypegrammarParser#fn}.
 	 * @param ctx the parse tree
 	 */

@@ -76,6 +76,18 @@ public class TypegrammarBaseListener implements TypegrammarListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterRestriction(TypegrammarParser.RestrictionContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRestriction(TypegrammarParser.RestrictionContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterFn(TypegrammarParser.FnContext ctx) { }
 	/**
 	 * {@inheritDoc}

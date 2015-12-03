@@ -33,16 +33,14 @@ class CodegenTests extends FunSuite {
   /*
   test("Intermediate") { // manual test
     val code = """
-      def ident = { y ->
-        { x -> y(x) }
+      f :: a+Eq, b -> List[b]
+      def f = { x, y -> 
+        eq(x, x)
+        list(y)
       }
-      def f = { x -> { y -> add(x, y) } } 
-      def z = ident({x -> add(x, 1)})
-      z(1)
-      def j = f(1)
-      j(19)
+      f(1, 2)
       """
-    println("result = " + intermediate(code)))
+    println("result = " + intermediate(code))
   }
   */
 }

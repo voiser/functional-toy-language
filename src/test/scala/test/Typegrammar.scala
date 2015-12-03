@@ -55,4 +55,10 @@ class Typegrammar extends FunSuite {
     val expected = "Int"
     assert (tree(code) == expected)
   }
+  
+  test("Parse with restrictions") {
+    val code = "a +Num+Eq, b +Eq -> c+Eq"
+    val expected = "(a+Num+Eq,b+Eq -> c+Eq)"
+    assert (tree(code) == expected)
+  }
 }

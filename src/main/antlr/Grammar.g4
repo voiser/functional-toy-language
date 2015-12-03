@@ -6,7 +6,7 @@ file  : 'module' name=ID imp* block
 imp : 'import' IMPORT ('as' alias=ID)?
        ;
 
-block : (expression) +
+block : (expression | forward)+
       ;
 
 expression : value 
@@ -16,7 +16,6 @@ expression : value
            | ref
            | cond
            | '(' expression ')'
-           | forward
            | binary
            | list
            | map
@@ -45,11 +44,11 @@ ref : ID ;
 
 cond : 'if' condition=expression 'then' exptrue=expression 'else' expfalse=expression
      ;
- 
+
 forward : ID '::' ty=tydef
         ;
 
-tydef : CLASSID | ID | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef | tydef ',' tydef
+tydef : CLASSID | ID | RESTRICTION | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef | tydef ',' tydef 
       ;
 
 binary : xleft=binexp op=BINOP right=binexp
@@ -77,6 +76,7 @@ CLASSID : [A-Z][a-zA-Z]* ;
 INTEGER : [0-9]+ ;
 FLOAT : [0-9]* '.' [0-9]+ ;
 STRING : '"' ~["]* '"' ;
+RESTRICTION : [a-z][a-zA-Z0-9_\-\+]* ;
 BINOP : '+' | '-' | '*' | '/' | '==' ;
 WS : [ \t\r\n]+ -> skip ;
 

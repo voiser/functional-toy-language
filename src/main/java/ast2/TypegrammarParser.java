@@ -17,19 +17,19 @@ public class TypegrammarParser extends Parser {
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		T__0=1, T__1=2, T__2=3, T__3=4, T__4=5, T__5=6, ID=7, VAR=8, WS=9;
+		T__0=1, T__1=2, T__2=3, T__3=4, T__4=5, T__5=6, T__6=7, ID=8, VAR=9, WS=10;
 	public static final int
 		RULE_ty = 0, RULE_ty2 = 1, RULE_simple = 2, RULE_generic = 3, RULE_var = 4, 
-		RULE_fn = 5, RULE_left = 6;
+		RULE_restriction = 5, RULE_fn = 6, RULE_left = 7;
 	public static final String[] ruleNames = {
-		"ty", "ty2", "simple", "generic", "var", "fn", "left"
+		"ty", "ty2", "simple", "generic", "var", "restriction", "fn", "left"
 	};
 
 	private static final String[] _LITERAL_NAMES = {
-		null, "'('", "')'", "'['", "','", "']'", "'->'"
+		null, "'('", "')'", "'['", "','", "']'", "'+'", "'->'"
 	};
 	private static final String[] _SYMBOLIC_NAMES = {
-		null, null, null, null, null, null, null, "ID", "VAR", "WS"
+		null, null, null, null, null, null, null, null, "ID", "VAR", "WS"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
@@ -87,6 +87,9 @@ public class TypegrammarParser extends Parser {
 		public GenericContext generic() {
 			return getRuleContext(GenericContext.class,0);
 		}
+		public VarContext var() {
+			return getRuleContext(VarContext.class,0);
+		}
 		public FnContext fn() {
 			return getRuleContext(FnContext.class,0);
 		}
@@ -113,37 +116,44 @@ public class TypegrammarParser extends Parser {
 		TyContext _localctx = new TyContext(_ctx, getState());
 		enterRule(_localctx, 0, RULE_ty);
 		try {
-			setState(21);
+			setState(24);
 			switch ( getInterpreter().adaptivePredict(_input,0,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(14);
+				setState(16);
 				simple();
 				}
 				break;
 			case 2:
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(15);
+				setState(17);
 				generic();
 				}
 				break;
 			case 3:
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(16);
-				fn();
+				setState(18);
+				var();
 				}
 				break;
 			case 4:
 				enterOuterAlt(_localctx, 4);
 				{
-				setState(17);
-				match(T__0);
-				setState(18);
-				fn();
 				setState(19);
+				fn();
+				}
+				break;
+			case 5:
+				enterOuterAlt(_localctx, 5);
+				{
+				setState(20);
+				match(T__0);
+				setState(21);
+				fn();
+				setState(22);
 				match(T__1);
 				}
 				break;
@@ -196,37 +206,37 @@ public class TypegrammarParser extends Parser {
 		Ty2Context _localctx = new Ty2Context(_ctx, getState());
 		enterRule(_localctx, 2, RULE_ty2);
 		try {
-			setState(30);
+			setState(33);
 			switch ( getInterpreter().adaptivePredict(_input,1,_ctx) ) {
 			case 1:
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(23);
+				setState(26);
 				simple();
 				}
 				break;
 			case 2:
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(24);
+				setState(27);
 				generic();
 				}
 				break;
 			case 3:
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(25);
+				setState(28);
 				var();
 				}
 				break;
 			case 4:
 				enterOuterAlt(_localctx, 4);
 				{
-				setState(26);
+				setState(29);
 				match(T__0);
-				setState(27);
+				setState(30);
 				fn();
-				setState(28);
+				setState(31);
 				match(T__1);
 				}
 				break;
@@ -270,7 +280,7 @@ public class TypegrammarParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(32);
+			setState(35);
 			match(ID);
 			}
 		}
@@ -319,29 +329,29 @@ public class TypegrammarParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(34);
+			setState(37);
 			match(ID);
-			setState(35);
+			setState(38);
 			match(T__2);
-			setState(36);
+			setState(39);
 			ty2();
-			setState(41);
+			setState(44);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			while (_la==T__3) {
 				{
 				{
-				setState(37);
+				setState(40);
 				match(T__3);
-				setState(38);
+				setState(41);
 				ty2();
 				}
 				}
-				setState(43);
+				setState(46);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 			}
-			setState(44);
+			setState(47);
 			match(T__4);
 			}
 		}
@@ -358,6 +368,12 @@ public class TypegrammarParser extends Parser {
 
 	public static class VarContext extends ParserRuleContext {
 		public TerminalNode VAR() { return getToken(TypegrammarParser.VAR, 0); }
+		public List<RestrictionContext> restriction() {
+			return getRuleContexts(RestrictionContext.class);
+		}
+		public RestrictionContext restriction(int i) {
+			return getRuleContext(RestrictionContext.class,i);
+		}
 		public VarContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -380,11 +396,70 @@ public class TypegrammarParser extends Parser {
 	public final VarContext var() throws RecognitionException {
 		VarContext _localctx = new VarContext(_ctx, getState());
 		enterRule(_localctx, 8, RULE_var);
+		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(46);
+			setState(49);
 			match(VAR);
+			setState(53);
+			_errHandler.sync(this);
+			_la = _input.LA(1);
+			while (_la==T__5) {
+				{
+				{
+				setState(50);
+				restriction();
+				}
+				}
+				setState(55);
+				_errHandler.sync(this);
+				_la = _input.LA(1);
+			}
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			_errHandler.reportError(this, re);
+			_errHandler.recover(this, re);
+		}
+		finally {
+			exitRule();
+		}
+		return _localctx;
+	}
+
+	public static class RestrictionContext extends ParserRuleContext {
+		public TerminalNode ID() { return getToken(TypegrammarParser.ID, 0); }
+		public RestrictionContext(ParserRuleContext parent, int invokingState) {
+			super(parent, invokingState);
+		}
+		@Override public int getRuleIndex() { return RULE_restriction; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof TypegrammarListener ) ((TypegrammarListener)listener).enterRestriction(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof TypegrammarListener ) ((TypegrammarListener)listener).exitRestriction(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof TypegrammarVisitor ) return ((TypegrammarVisitor<? extends T>)visitor).visitRestriction(this);
+			else return visitor.visitChildren(this);
+		}
+	}
+
+	public final RestrictionContext restriction() throws RecognitionException {
+		RestrictionContext _localctx = new RestrictionContext(_ctx, getState());
+		enterRule(_localctx, 10, RULE_restriction);
+		try {
+			enterOuterAlt(_localctx, 1);
+			{
+			setState(56);
+			match(T__5);
+			setState(57);
+			match(ID);
 			}
 		}
 		catch (RecognitionException re) {
@@ -430,32 +505,32 @@ public class TypegrammarParser extends Parser {
 
 	public final FnContext fn() throws RecognitionException {
 		FnContext _localctx = new FnContext(_ctx, getState());
-		enterRule(_localctx, 10, RULE_fn);
+		enterRule(_localctx, 12, RULE_fn);
 		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(48);
+			setState(59);
 			left();
-			setState(53);
+			setState(64);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			while (_la==T__3) {
 				{
 				{
-				setState(49);
+				setState(60);
 				match(T__3);
-				setState(50);
+				setState(61);
 				left();
 				}
 				}
-				setState(55);
+				setState(66);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 			}
-			setState(56);
-			match(T__5);
-			setState(57);
+			setState(67);
+			match(T__6);
+			setState(68);
 			((FnContext)_localctx).right = ty2();
 			}
 		}
@@ -495,11 +570,11 @@ public class TypegrammarParser extends Parser {
 
 	public final LeftContext left() throws RecognitionException {
 		LeftContext _localctx = new LeftContext(_ctx, getState());
-		enterRule(_localctx, 12, RULE_left);
+		enterRule(_localctx, 14, RULE_left);
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(59);
+			setState(70);
 			ty2();
 			}
 		}
@@ -515,22 +590,25 @@ public class TypegrammarParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u0430\ud6d1\u8206\uad2d\u4417\uaef1\u8d80\uaadd\3\13@\4\2\t\2\4\3\t"+
-		"\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\3\2\3\2\3\2\3\2\3\2\3\2\3\2"+
-		"\5\2\30\n\2\3\3\3\3\3\3\3\3\3\3\3\3\3\3\5\3!\n\3\3\4\3\4\3\5\3\5\3\5\3"+
-		"\5\3\5\7\5*\n\5\f\5\16\5-\13\5\3\5\3\5\3\6\3\6\3\7\3\7\3\7\7\7\66\n\7"+
-		"\f\7\16\79\13\7\3\7\3\7\3\7\3\b\3\b\3\b\2\2\t\2\4\6\b\n\f\16\2\2@\2\27"+
-		"\3\2\2\2\4 \3\2\2\2\6\"\3\2\2\2\b$\3\2\2\2\n\60\3\2\2\2\f\62\3\2\2\2\16"+
-		"=\3\2\2\2\20\30\5\6\4\2\21\30\5\b\5\2\22\30\5\f\7\2\23\24\7\3\2\2\24\25"+
-		"\5\f\7\2\25\26\7\4\2\2\26\30\3\2\2\2\27\20\3\2\2\2\27\21\3\2\2\2\27\22"+
-		"\3\2\2\2\27\23\3\2\2\2\30\3\3\2\2\2\31!\5\6\4\2\32!\5\b\5\2\33!\5\n\6"+
-		"\2\34\35\7\3\2\2\35\36\5\f\7\2\36\37\7\4\2\2\37!\3\2\2\2 \31\3\2\2\2 "+
-		"\32\3\2\2\2 \33\3\2\2\2 \34\3\2\2\2!\5\3\2\2\2\"#\7\t\2\2#\7\3\2\2\2$"+
-		"%\7\t\2\2%&\7\5\2\2&+\5\4\3\2\'(\7\6\2\2(*\5\4\3\2)\'\3\2\2\2*-\3\2\2"+
-		"\2+)\3\2\2\2+,\3\2\2\2,.\3\2\2\2-+\3\2\2\2./\7\7\2\2/\t\3\2\2\2\60\61"+
-		"\7\n\2\2\61\13\3\2\2\2\62\67\5\16\b\2\63\64\7\6\2\2\64\66\5\16\b\2\65"+
-		"\63\3\2\2\2\669\3\2\2\2\67\65\3\2\2\2\678\3\2\2\28:\3\2\2\29\67\3\2\2"+
-		"\2:;\7\b\2\2;<\5\4\3\2<\r\3\2\2\2=>\5\4\3\2>\17\3\2\2\2\6\27 +\67";
+		"\3\u0430\ud6d1\u8206\uad2d\u4417\uaef1\u8d80\uaadd\3\fK\4\2\t\2\4\3\t"+
+		"\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\3\2\3\2\3\2\3\2\3\2"+
+		"\3\2\3\2\3\2\5\2\33\n\2\3\3\3\3\3\3\3\3\3\3\3\3\3\3\5\3$\n\3\3\4\3\4\3"+
+		"\5\3\5\3\5\3\5\3\5\7\5-\n\5\f\5\16\5\60\13\5\3\5\3\5\3\6\3\6\7\6\66\n"+
+		"\6\f\6\16\69\13\6\3\7\3\7\3\7\3\b\3\b\3\b\7\bA\n\b\f\b\16\bD\13\b\3\b"+
+		"\3\b\3\b\3\t\3\t\3\t\2\2\n\2\4\6\b\n\f\16\20\2\2L\2\32\3\2\2\2\4#\3\2"+
+		"\2\2\6%\3\2\2\2\b\'\3\2\2\2\n\63\3\2\2\2\f:\3\2\2\2\16=\3\2\2\2\20H\3"+
+		"\2\2\2\22\33\5\6\4\2\23\33\5\b\5\2\24\33\5\n\6\2\25\33\5\16\b\2\26\27"+
+		"\7\3\2\2\27\30\5\16\b\2\30\31\7\4\2\2\31\33\3\2\2\2\32\22\3\2\2\2\32\23"+
+		"\3\2\2\2\32\24\3\2\2\2\32\25\3\2\2\2\32\26\3\2\2\2\33\3\3\2\2\2\34$\5"+
+		"\6\4\2\35$\5\b\5\2\36$\5\n\6\2\37 \7\3\2\2 !\5\16\b\2!\"\7\4\2\2\"$\3"+
+		"\2\2\2#\34\3\2\2\2#\35\3\2\2\2#\36\3\2\2\2#\37\3\2\2\2$\5\3\2\2\2%&\7"+
+		"\n\2\2&\7\3\2\2\2\'(\7\n\2\2()\7\5\2\2).\5\4\3\2*+\7\6\2\2+-\5\4\3\2,"+
+		"*\3\2\2\2-\60\3\2\2\2.,\3\2\2\2./\3\2\2\2/\61\3\2\2\2\60.\3\2\2\2\61\62"+
+		"\7\7\2\2\62\t\3\2\2\2\63\67\7\13\2\2\64\66\5\f\7\2\65\64\3\2\2\2\669\3"+
+		"\2\2\2\67\65\3\2\2\2\678\3\2\2\28\13\3\2\2\29\67\3\2\2\2:;\7\b\2\2;<\7"+
+		"\n\2\2<\r\3\2\2\2=B\5\20\t\2>?\7\6\2\2?A\5\20\t\2@>\3\2\2\2AD\3\2\2\2"+
+		"B@\3\2\2\2BC\3\2\2\2CE\3\2\2\2DB\3\2\2\2EF\7\t\2\2FG\5\4\3\2G\17\3\2\2"+
+		"\2HI\5\4\3\2I\21\3\2\2\2\7\32#.\67B";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

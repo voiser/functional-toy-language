@@ -72,6 +72,7 @@ object Main {
     // Build the CST
     val lexer = new GrammarLexer(new ANTLRInputStream(code))
     val parser = new GrammarParser(new CommonTokenStream(lexer))
+    //parser.setTrace(true)
     val cst = parser.file()
     
     // Build the AST
@@ -197,5 +198,6 @@ object Main {
       showLine(codelines, x.message, x.node)
     }
     println()
+    throw e
   }
 }

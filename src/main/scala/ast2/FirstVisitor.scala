@@ -4,6 +4,8 @@ import scala.collection.JavaConverters._
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
+import ast2.GrammarParser.ExpressionContext
+import ast2.GrammarParser.ForwardContext
 
 /**
  * @author david
@@ -88,7 +90,11 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   }
   
   override def visitBlock(ctx: GrammarParser.BlockContext) = {
-    fill(NBlock(ctx.expression().asScala.toList.map { visitExpression(_) }), ctx)
+    val visitedChildren = ctx.children.asScala.toList.collect { 
+      case x : ExpressionContext => visitExpression(x)
+      case x : ForwardContext => visitForward(x)
+    }
+    fill(NBlock(visitedChildren), ctx)
   }
   
   override def visitFile(ctx: GrammarParser.FileContext) = {

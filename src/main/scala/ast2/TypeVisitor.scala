@@ -7,13 +7,14 @@ class TypeVisitor extends TypegrammarBaseVisitor[GTy] {
   override def visitTy(ctx: TypegrammarParser.TyContext) = {
     if (ctx.simple != null) visitSimple(ctx.simple)
     else if (ctx.generic != null) visitGeneric(ctx.generic)
+    else if (ctx.`var` != null) visitVar(ctx.`var`)
     else visitFn(ctx.fn)
   }
   
   override def visitTy2(ctx: TypegrammarParser.Ty2Context) = {
     if (ctx.simple != null) visitSimple(ctx.simple)
     else if (ctx.generic != null) visitGeneric(ctx.generic)
-    else if (ctx.`var` != null) visitVar(ctx.`var`) 
+    else if (ctx.`var` != null) visitVar(ctx.`var`)
     else visitFn(ctx.fn)
   }
   
@@ -30,7 +31,12 @@ class TypeVisitor extends TypegrammarBaseVisitor[GTy] {
   
   override def visitVar(ctx: TypegrammarParser.VarContext) = {
     val name = ctx.VAR().getText
-    GTyvar(name)
+    val restrictions = 
+      if (ctx.restriction != null) {
+        ctx.restriction.asScala.toList map { _.ID().getText }
+      }
+      else List()
+    GTyvar(name, restrictions)
   }
 
   override def visitLeft(ctx: TypegrammarParser.LeftContext) = {
@@ -50,8 +56,8 @@ object Typegrammar {
   
   def toType(ty: GTy, env: Env) : Ty = ty match {
     
-    case GTyvar(name) =>
-      Tyvar(name, List())
+    case GTyvar(name, restrictions) =>
+      Tyvar(name, restrictions)
     
     case GTycon(name, params) =>
       env.getType(name) match {

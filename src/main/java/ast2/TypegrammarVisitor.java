@@ -41,6 +41,12 @@ public interface TypegrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitVar(TypegrammarParser.VarContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link TypegrammarParser#restriction}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRestriction(TypegrammarParser.RestrictionContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link TypegrammarParser#fn}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

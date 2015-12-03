@@ -9,7 +9,7 @@ case class KlassVar(name: String) extends KlassRef
 abstract class GTy
 case class GTycon(name: String, params: List[GTy]) extends GTy
 case class GTyfn(lefts: List[GTy], right: GTy) extends GTy
-case class GTyvar(name: String) extends GTy
+case class GTyvar(name: String, restrictions: List[String]) extends GTy
 
 abstract class Node {
   var filename: String = null
