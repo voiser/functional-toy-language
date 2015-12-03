@@ -31,7 +31,7 @@ class CompilationUnit(
 ) {
   
   // Generates all function units contained in this set
-  def unitFunctions = {
+  val unitFunctions = {
     functions.map { f =>
       val root = f.function
       val name = f.function.name
@@ -59,7 +59,7 @@ class CompilationUnit(
           (name, x, l)
       }
       
-      val locals: List[(String, Node, Int)] = myself :: params ++ root.value.children.collect {
+      val locals0: List[(String, Node, Int)] = myself :: params ++ root.value.children.collect {
         case NDef(name, v : NApply) => 
           l = l + 1
           localmap.put(name, l)
@@ -71,14 +71,27 @@ class CompilationUnit(
         case NDef(name, v : NRef) =>
           localmap.get(v.name) match {
             case Some(int) =>
-              localmap.put(name, int)
-              (name, v, int)
+              null
             case None => 
               l = l + 1
               localmap.put(name, l)
               (name, v, l)
           }
+        case a @ NDefAnon(name, v) if (a.env.parent == root.value.env) =>
+          l = l + 1
+          localmap.put(name, l)
+          (name, v, l)
+        case a @ NRefAnon(name) =>
+          localmap.get(name) match {
+            case Some(int) =>
+              null
+            case None => 
+              l = l + 1
+              localmap.put(name, l)
+              (name, a, l)
+          }
       }
+      val locals = locals0.filter(_ != null)
       
       val exts: List[(String, Ty)] = externs.find { x => x.function.name == root.name } match {
         case Some(Extern(node, names)) =>

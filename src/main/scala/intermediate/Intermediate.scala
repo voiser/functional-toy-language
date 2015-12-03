@@ -14,6 +14,8 @@ import ast2.NString
 import ast2.Node
 import ast2.Ty
 import ast2.Tyfn
+import ast2.NRefAnon
+import ast2.NDefAnon
 
 abstract class CodegenType
 case class CodegenValue() extends CodegenType {
@@ -131,6 +133,12 @@ case class Constant(
   def repr(d: Int) = margin(d) + "Constant " + name
   def children = List()
 }
+case class Capture(
+    name: String)
+    extends CodeStep {
+  def repr(d: Int) = margin(d) + "Capture " + name
+  def children = List()
+}
 case class Extern(
     name: String)
     extends CodeStep {
@@ -203,6 +211,33 @@ object Intermediate {
   def flocal(name: String, locals: List[(String, Node, Int)]) = 
     findlocal(name, locals).getOrElse(throw new RuntimeException("No local for " + name))._3
 
+  def createInitialize(
+      unit: CompilationUnit, 
+      function: CompilationUnitFunction,
+      allLocals: List[(String, Node, Int)],
+      captures: List[CreateCapture],
+      name: String) = {
+    
+    val destname = unit.module.name + "/" + name
+    val local = flocal(name, allLocals)
+    val params = unit.unitFunctions.find { f => f.name == name } match {
+      case None => throw new RuntimeException("Ouch! This is a compiler bug")
+      case Some(u) => 
+        u.captures.map { x => 
+          val l = findlocal(x.name, allLocals) 
+          l match {
+            case Some((name, _, i)) => Local(i)
+            case None => 
+              captures.find(_.name == x.name) match {
+                case Some(CreateCapture(name, ty)) => Capture(name)
+                case None => Constant(x.name)
+              }
+          }
+        }
+    }
+    Initialize(destname, local, params)
+  }
+    
   def genfunction(unit: CompilationUnit, function: CompilationUnitFunction) = {
     val name = function.name
     val arity = function.root.params.length
@@ -218,27 +253,23 @@ object Intermediate {
         val destname = unit.module.name + "/" + v.name
         val local = flocal(name, allLocals)
         Instantiate(destname, local)
-    }
-    
-    val initializations = function.root.value.children.collect {
-      case NDef(name, v: NFn) =>
-        val destname = unit.module.name + "/" + v.name
+      case a @ NDefAnon(name, _) if (a.env.parent == function.root.value.env) =>
+        val destname = unit.module.name + "/" + name
         val local = flocal(name, allLocals)
-        val params = unit.unitFunctions.find { f => f.name == v.name } match {
-          case None => throw new RuntimeException("Ouch! This is a compiler bug")
-          case Some(u) => 
-            u.captures.map { x => 
-              val l = findlocal(x.name, allLocals) 
-              l match {
-                case Some((name, _, i)) => Local(i)
-                case _ => Constant(x.name)
-              }
-            }
-        }
-        Initialize(destname, local, params)
+        Instantiate(destname, local)
+      case x @ NRefAnon(name) =>
+        val destname = unit.module.name + "/" + name
+        val local = flocal(name, allLocals)
+        Instantiate(destname, local)
+    }
+   
+    val initializations = function.root.value.children.collect {
+      case NDef(name, v: NFn) => createInitialize(unit, function, allLocals, captures, v.name)
+      case a @ NDefAnon(name, _) if (a.env.parent == function.root.value.env) => createInitialize(unit, function, allLocals, captures, name)
+      case x @ NRefAnon(name) => createInitialize(unit, function, allLocals, captures, name)
     }
     val code = function.root.value.children.map { x =>
-      translate(unit, function, allLocals, externs, x) 
+      translate(unit, function, allLocals, externs, captures, x) 
     }
     
     val metaType = MetadataType(function.root.ty.repr)
@@ -262,6 +293,7 @@ object Intermediate {
       function: CompilationUnitFunction,
       allLocals: List[(String, Node, Int)],
       externs: List[CreateExtern],
+      captures: List[CreateCapture],
       node: Node) : CodeStep = node match {
     
     case NDef(name, v : NInt) => Nop()
@@ -273,16 +305,20 @@ object Intermediate {
     
     case NDef(name, v) =>
       val local = flocal(name, allLocals)
-      StoreLocal(local, name, translate(unit, function, allLocals, externs, v))
+      StoreLocal(local, name, translate(unit, function, allLocals, externs, captures, v))
           
     case x @ NRef(name) =>
       val local = findlocal(name, allLocals) 
       local match {
         case Some((name, _, i)) => Local(i)
-        case _ => 
+        case None => 
           externs.find(_.name == x.name) match {
             case Some(CreateExtern(name, ty, fullname)) => Extern(x.name)
-            case None => Constant(x.name)
+            case None => 
+              captures.find(_.name == x.name) match {
+                case Some(CreateCapture(name, ty)) => Capture(name)
+                case None => Constant(x.name)
+              }
           }
       }
       
@@ -292,7 +328,7 @@ object Intermediate {
 
      case x @ NApply(fname, args) =>
        val realname = x.realName
-       val params = args.map { x => translate(unit, function, allLocals, externs, x) }
+       val params = args.map { x => translate(unit, function, allLocals, externs, captures, x) }
        val local = findlocal(realname, allLocals)
        local match {
         case Some((name, _, i)) => CallLocal(i, realname, params)
@@ -303,12 +339,22 @@ object Intermediate {
           }
        }
        
-       
     case x @ NIf(cond, extrue, exfalse) =>
-      val c = translate(unit, function, allLocals, externs, cond)
-      val t = translate(unit, function, allLocals, externs, extrue)
-      val f = translate(unit, function, allLocals, externs, exfalse)
+      val c = translate(unit, function, allLocals, externs, captures, cond)
+      val t = translate(unit, function, allLocals, externs, captures, extrue)
+      val f = translate(unit, function, allLocals, externs, captures, exfalse)
       SIf(c, t, f)
+      
+    case x @ NRefAnon(name) =>  
+      val local = findlocal(name, allLocals) 
+      local match {
+        case Some((name, _, i)) => Local(i)
+        case _ => 
+          externs.find(_.name == x.name) match {
+            case Some(CreateExtern(name, ty, fullname)) => Extern(x.name)
+            case None => Constant(x.name)
+          }
+      }
       
     case _ => Nop()
   }

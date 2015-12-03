@@ -22,7 +22,7 @@ class CodegenTests extends FunSuite {
       val module = Intermediate.codegen(unit)
       println(module)
       val bytes = Codegen.codegen(module)
-      val ret = Main.execute(unit.module.name, bytes)
+      Main.execute(unit.module.name, bytes)
     } 
     catch {
       case e: TypeException =>
@@ -30,14 +30,19 @@ class CodegenTests extends FunSuite {
     }
   }
   
+  /*
   test("Intermediate") { // manual test
     val code = """
-      f :: Int, Int -> Int
-      def f = { a Int, b Int -> 
-        a + b 
+      def ident = { y ->
+        { x -> y(x) }
       }
-      f(1, 2)
+      def f = { x -> { y -> add(x, y) } } 
+      def z = ident({x -> add(x, 1)})
+      z(1)
+      def j = f(1)
+      j(19)
       """
-    intermediate(code)
+    println("result = " + intermediate(code)))
   }
+  */
 }

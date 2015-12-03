@@ -17,6 +17,9 @@ class Visitor {
   
   def visitNDef(n: NDef) {
   }
+
+  def visitNDefAnonFunc(n: NDefAnon) {
+  }
   
   def visitNApply(n: NApply) {
   }
@@ -39,6 +42,11 @@ class Visitor {
   
   def visit(n: NDef): Unit = {
     visitNDef(n)
+    visit(n.value)
+  }
+
+  def visit(n: NDefAnon): Unit = {
+    visitNDefAnonFunc(n)
     visit(n.value)
   }
   
@@ -68,6 +76,9 @@ class Visitor {
         visit(x)
         
       case x : NDef =>
+        visit(x)
+      
+      case x : NDefAnon =>
         visit(x)
         
       case x : NApply =>
@@ -108,8 +119,11 @@ class AnonymousFunctionNamerVisitor(module: NModule) extends Visitor {
   
   override def visitNFn(n: NFn) {
     if (n.name == null) {
+      //println("I have an anon function: " + n)
+      //println("It is defined in " + n.env)
       val newName = n.env.repr + "$_" + i
       n.name = newName
+      n.defname = newName
       //println ("Naming function " + n + " with name " + newName)
       anonFuncs += n
     }
@@ -152,6 +166,7 @@ class FetchRefsVisitor(root: NFn) extends Visitor {
       val r = NRef(n.name)
       r.env = e1
       r.ctx = n.ctx
+      //println("----- I'm looking for the type of " + n.name + " in environment " + e1)
       r.ty = e1.get(n.name).get.tpe
       if (root.defname == n.name) {
         //println ("  This is a recursive call")

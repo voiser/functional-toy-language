@@ -29,6 +29,8 @@ case class NDef(name: String, value: Node) extends Node
 case class NRef(name: String) extends Node {
   var isRecursive: Boolean = false
 }
+case class NDefAnon(name: String, value: Node) extends Node
+case class NRefAnon(name: String) extends Node 
 case class NFnArg(name: String, klass: KlassRef) extends Node
 case class NFn(params: List[NFnArg], value: NBlock) extends Node {
   // def f = {...} ---> name = envx$f, defname = f
@@ -104,7 +106,7 @@ case class Extern(function: NFn, symbols: List[String]) {
 }
 
 
-class Env(var id: String, val parent: Env, introducedBy: Node) {
+class Env(var id: String, val parent: Env, val introducedBy: Node) {
 
   if (introducedBy != null) introducedBy.env = this
   

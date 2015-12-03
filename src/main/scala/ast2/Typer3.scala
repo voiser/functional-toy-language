@@ -219,8 +219,10 @@ object Typer3 {
         val b = gen.get()
         val s1 = unify(t, Tyfn(a, b), s, n) (gen, trac("When typing a function body"))
         val env1 = Env(env, n)
-        (params zip a).foreach { x => env1.put(x._1.name, null, TypeScheme(List(), x._2)) }
-        tp(env1, ex, b, s1)
+        (params zip a).foreach { x => env1.put(x._1.name, null, TypeScheme(List(), x._2))}
+        val ret = tp(env1, ex, b, s1)
+        (params zip a).foreach { x => env1.put(x._1.name, null, TypeScheme(List(), ret(x._2)))}
+        ret
         
       case x @ NApply(name, args) => 
         val a = args.map { x => gen.get() }

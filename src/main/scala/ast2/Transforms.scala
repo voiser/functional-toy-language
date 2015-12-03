@@ -48,6 +48,14 @@ class Transformer {
     NRef(n.name)
   }
   
+  def visitNDefAnon(n: NDefAnon): Node = {
+    NDefAnon(n.name, visit(n.value))
+  }
+  
+  def visitNRefAnon(n: NRefAnon): Node = {
+    NRefAnon(n.name)
+  }
+  
   def visit(n: Node) : Node = {
     n match {
       
@@ -69,6 +77,11 @@ class Transformer {
       case x : NRef =>
         fill(n, visitNRef(x))
       
+      case x : NDefAnon =>
+        fill(n, visitNDefAnon(x))
+        
+      case x : NRefAnon =>
+        fill(n, visitNRefAnon(x))
       case _ => 
         n
     }
@@ -83,7 +96,7 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
   def apply() : NModule = {
     val main2 = visitNFn(module.main).asInstanceOf[NFn] 
     val newdefs = anons.map { a =>
-      fill(a, NDef(a.name, a))
+      fill(a, NDefAnon(a.name, a))
     }
     val newlines = newdefs ++ main2.value.children
     val newf = NFn(module.main.params, fill(module.main.value, NBlock(newlines)))
@@ -95,7 +108,7 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
     //println("Visiting a function with name " + n.name)
     if (anonNames.contains(n.name)) {
       //println("  This is an anonymous function!")
-      val x = NRef(n.name)
+      val x = NRefAnon(n.name)
       fill(n, x)
       x
     } 
@@ -103,8 +116,4 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
       super.visitNFn(n)
     }
   }
-  
 }
-
-
-

@@ -165,4 +165,24 @@ class BasicTests extends FunSuite {
         assert (e.getMessage().contains("can't have typed arguments"))
     }
   }
+  
+  test("Anonymous functions, captures") {
+    val code = """
+      def addcurried = { x -> { y -> add(x, y) } }
+      def addtwo = addcurried(2)
+      addtwo(19) 
+      """
+    val ret = run(code)
+    assert("21" == ret.toString())
+  }
+  
+  test("Anonymous functions, captures 2") {
+    val code = """
+      def apply = { f -> { x -> f(x) } } 
+      def equalsToOne = apply({x -> eq(1, x)})
+      equalsToOne(2)
+      """
+    val ret = run(code)
+    assert("False" == ret.toString())
+  }
 }

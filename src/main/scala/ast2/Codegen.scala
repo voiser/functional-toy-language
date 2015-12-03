@@ -307,12 +307,22 @@ object Codegen {
       case Constant(name) =>
         val ty = uf.constants.collectFirst { case CreateConstant(n, t, _) if (name == n) => jsuperclass(t) }
         ty match {
-          case None => throw new RuntimeException("I can't find the type of " + name + ". This is a compiler bug")
+          case None => throw new CodegenException("In class " + uf.name + ", I can't find the type of " + name + ". This is a compiler bug")
           case Some(t) =>
             mv.visitVarInsn(ALOAD, 0);
             mv.visitFieldInsn(GETFIELD, sn, name, t);
             stack.push
         }
+        
+      case Capture(name) =>
+        val ty = uf.captures.collectFirst { case CreateCapture(n, t) if (name == n) => jsuperclass(t) }
+        ty match {
+          case None => throw new CodegenException("In class " + uf.name + ", I can't find the type of " + name + ". This is a compiler bug")
+          case Some(t) =>
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitFieldInsn(GETFIELD, sn, name, t);
+            stack.push
+        }  
         
       case intermediate.Extern(name) =>
         val ty = uf.externs.collectFirst { case CreateExtern(n, f, t) if (name == n) => jsuperclass(t) }
@@ -326,7 +336,6 @@ object Codegen {
         
       case StoreLocal(local, _, value) =>
         add(module, uf, mv, value, stack)
-        mv.visitInsn(DUP) // do I really need this? 
         stack.push
         mv.visitVarInsn(ASTORE, local)
         stack.pop
@@ -336,6 +345,7 @@ object Codegen {
         val javasignature = "(" + (JTHING * args.length) + ")" + JTHING
         mv.visitVarInsn(ALOAD, local)
         stack.push
+        mv.visitTypeInsn(CHECKCAST, FUNC);
         args.foreach { arg => 
             add(module, uf, mv, arg, stack)
         }
@@ -411,6 +421,17 @@ object Codegen {
       add(module, uf, mv, ex, stack)
     }
     
+    uf.code.last match {
+      case StoreLocal(local, _, _) =>
+        mv.visitVarInsn(ALOAD, local)
+        stack.push
+        
+      case Nop() =>
+        mv.visitVarInsn(ALOAD, 0)
+        stack.push
+        
+      case _ =>
+    }
     mv.visitInsn(ARETURN)
     mv.visitMaxs(stack.maxdepth, uf.locals.size + 1)
     mv.visitEnd()
@@ -493,9 +514,6 @@ object Codegen {
    * Generates a Java class for a function in a module
    */
   def genclass(module: CreateModule, f: CreateFunction) = {
-    
-    //println ("Generating class " + uf.className)
-
     val cw = new ClassWriter(0)
     cw.visit(V1_7, ACC_PUBLIC + ACC_SUPER, slashedName(module, f), null, FUNC, null)
     

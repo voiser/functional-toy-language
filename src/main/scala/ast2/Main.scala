@@ -106,11 +106,11 @@ object Main {
     // make anonymous functions local
     val module2 = new AnonymousFunction2LocalTransformer(module, anonFuncs.toList).apply()
     
-    //show(module2.main, code)
+    // show(module2.main, code)
     
     // Extract references to all functions
     val funcs = new FunctionVisitor(module2).functions.toList
-    
+   
     // Extract references to all external symbols
     val externs = funcs.map { x => Extern(x.function, new ReferenceExtractor(x.function).externalFunctions.toList) }
     
@@ -156,6 +156,10 @@ object Main {
                 
         case NDef(name, ex) =>
           rep("Def " + name)
+          show0(ex, d+1)
+          
+        case NDefAnon(name, ex) =>
+          rep("DefAnon " + name)
           show0(ex, d+1)
                 
         case NFn(params, ex) =>
