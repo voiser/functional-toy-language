@@ -15,6 +15,11 @@ class TyvarGenerator(prefix: String) {
     n = n + 1
     Tyvar(prefix + n, List[String]())
   }
+  
+  def get(v : Tyvar) = {
+    n = n + 1
+    Tyvar(prefix + n, v.restrictions)
+  }
 }
 
 case class TraceElement(message: String, node: Node)
@@ -122,8 +127,11 @@ object Typer3 {
         
       case (Tycon(n1, tv1, isa1), Tycon(n2, tv2, isa2)) if (n1 == n2) =>
         (s /: (tv1 zip tv2)) ((s, tu) => unify(tu._1, tu._2, s, n))
-      
-      case _ => exception("Type mismatch. Needed " + s1.repr + " but given " + s2.repr, n)
+        
+      case (_, Tyvar(na, _)) =>
+        unify(t2, t1, s, n)
+        
+      case _ => exception("Type mismatch: incompatible types " + s1.repr + " and " + s2.repr, n)
     }
   }
   
@@ -132,6 +140,25 @@ object Typer3 {
       case None => throw new TypeException("Can't find forward in env. This is a compiler bug", x, mktrace("When locating forward node", x, trace))
       case Some(fwd) =>
         fwd     
+  }
+  
+  def checkForward(fname: String, forward: Ty, computed: Ty, n: Node, nf: Node, trace: List[TraceElement]) = {
+    def regen(ty: Ty) = {
+      val gen = new TyvarGenerator("t")
+      (emptySubst /: tyvars(ty))((s, t) => s.extend(t, gen.get(t)))(ty)
+    }
+    //println("The forward type is " + forward.repr)
+    //println("The computd type is " + computed.repr)
+    val cleanf = regen(forward)
+    val cleanc = regen(computed)
+    //println("The forward type is " + cleanf.repr)
+    //println("The computd type is " + cleanc.repr)
+    val matches = (cleanf.repr == cleanc.repr)
+    if (!matches) {
+      val t1 = TraceElement("The computed definition is " + cleanc.repr, n)
+      val t2 = TraceElement("The forward definition is  " + cleanf.repr, nf)
+      exception("The forward definition of " + fname + " does not match", nf)(t1 :: t2 :: trace) 
+    }
   }
   
   /**
@@ -168,10 +195,10 @@ object Typer3 {
           case None =>
             env.get(name + "$$forward") match {
               case Some(ts) =>
+                val fwd = getForward(ex, env, name + "$$forward")
+                val newtrace = mktrace("The forward definition is " + fwd.ty.repr, fwd, trace)
                 ex match {
                   case x @ NFn(params, ex) if (x.hasTypedArgs) =>
-                    val fwd = getForward(x, env, name + "$$forward")
-                    val newtrace = mktrace("The forward definition is " + fwd.ty.repr, fwd, trace)
                     throw new TypeException("Function " + name + " can't have typed arguments because it has a forward definition", x.typedArgs(0), newtrace)
                     
                   case _ =>
@@ -181,12 +208,13 @@ object Typer3 {
                 env1.put(name, forward)
                 val s1 = tp(env1, ex, t, s)
                 val computed = s1(t)
-                val s2 = unify(forward, computed, s1, n)
+                val s2 = unify(forward, computed, s1, n)(gen, newtrace)
+                checkForward(name, fwd.ty, s1(t), n, fwd, trace)
                 env1.put(name, s2(t))
                 ex match {
                   case x @ NFn(params, ex) =>
                     x.ty = s2(t)
-                    
+                                        
                   case _ =>
                 }
                 s2
