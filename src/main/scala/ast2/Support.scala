@@ -2,15 +2,36 @@ package ast2
 
 import org.antlr.v4.runtime.ParserRuleContext
 
+/**
+ * Used for typed parameters in functions
+ * 
+ * { a -> ... }     'a' is NFnArg("a", KlassVar())
+ * { a Int -> ... } 'a' is NFnArg("a", KlassConst("Int"))  
+ */
 abstract class KlassRef
 case class KlassConst(name: String) extends KlassRef
 case class KlassVar(name: String) extends KlassRef
 
+
+/**
+ * Used for representing types in forward declarations
+ * 
+ * f :: (Int -> Int) -> String
+ *                      ^^^^^^   GTycon
+ *              ^^^              GTycon
+ *       ^^^                     GTycon
+ *      ^^^^^^^^^^^^             GYyfn
+ *      ^^^^^^^^^^^^^^^^^^^^^^   GTyfn
+ */
 abstract class GTy
 case class GTycon(name: String, params: List[GTy]) extends GTy
 case class GTyfn(lefts: List[GTy], right: GTy) extends GTy
 case class GTyvar(name: String, restrictions: List[String]) extends GTy
 
+
+/**
+ * The syntax tree
+ */
 abstract class Node {
   var filename: String = null
   var ctx: ParserRuleContext = null
@@ -51,11 +72,23 @@ case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
 case class NForward(name: String, tydef: GTy) extends Node
 
 
+/**
+ * A type restriction. 
+ * Used to ensure that a polymorphic parameter offers some interface
+ * 
+ * def x = { x Int, y Int -> x + y }     has type (Int, Int) -> Int        (Monomorphic function)
+ * def x = { x -> x }                    has type a -> a                   (Polymorphic function)
+ * def x = { x a+Num, y a+Num -> a + b } has type (a+Num, a+Num) -> a+Num  (Polymorphic function with restrictions)
+ */
 case class Restriction(name: String, isa: List[Restriction]) {
   def repr: String = "+" + name
   def all : List[String] = name :: isa.flatMap { x => x.all }
 }
 
+
+/**
+ * Represents types
+ */
 abstract class Ty {
   def repr: String
 }
@@ -74,16 +107,57 @@ case class Tyvar(name: String, restrictions: List[String]) extends Ty {
 case class TyAny() extends Ty {
   override def repr = "Any"
 }
-
 object Tycon {
   def apply(name: String) : Tycon = Tycon(name, List(), List())
 }
 
+
+/**
+ * Exceptions and error traces
+ */
+case class TraceElement(message: String, node: Node)
 class ParseException(m: String) extends Exception(m)
 class TypeException(m: String, val node: Node, val trace: List[TraceElement]) extends Exception(m)
 class CodegenException(m: String) extends Exception(m)
 
 
+/**
+ * Generates fresh tyvars
+ */
+class TyvarGenerator(prefix: String) {
+  var n = 0
+  
+  def get() = {
+    n = n + 1
+    Tyvar(prefix + n, List[String]())
+  }
+  
+  def get(v : Tyvar) = {
+    n = n + 1
+    Tyvar(prefix + n, v.restrictions)
+  }
+}
+
+
+/**
+ * See http://www.scala-lang.org/docu/files/ScalaByExample.pdf 
+ * 
+ * a = Tyvar("a")
+ * b = Tyvar("b")
+ * t = Tycon("Map", List(a, b), ...)     t is Map[a, b]
+ * s = TypeScheme(List(a, b), t)         s is a wrapper of t, knowing that a and b are variables
+ * 
+ * Calling s.newInstance(...) gives a new type like 't' with fresh variables
+ * 
+ * s.newInstance(...) -> Map[t1, t2]
+ * s.newInstance(...) -> Map[t3, t4]
+ * ...
+ * 
+ * str = Tycon("str", ...)
+ * int = Tycon("int", ...)
+ * 
+ * t.applyTo(List(str, int)) -> Map[str, int]
+ */
 case class TypeScheme(tyvars: List[Tyvar], tpe: Ty) {
   def newInstance(gen: TyvarGenerator) : Ty = {
     (Typer3.emptySubst /: tyvars) ((s, tv) => s.extend(tv, gen.get())) (tpe)
@@ -95,6 +169,9 @@ case class TypeScheme(tyvars: List[Tyvar], tpe: Ty) {
 }
 
 
+/**
+ * Utility classes for code analysis
+ */
 case class Function(function: NFn, captures: List[NRef]) {
   override def toString() = "Function(" + function.defname + ", " + captures + ")"
 }
@@ -106,6 +183,12 @@ case class Extern(function: NFn, symbols: List[String]) {
 }
 
 
+/**
+ * Contains variables, references, types, etc. that are stored when traversing the AST
+ * There is a root environment, which contains the basic types and functions. 
+ * Every module and function introduces a new environment, with the previous environment
+ * as a parent. Thus, a tree of environments are generated.
+ */
 class Env(var id: String, val parent: Env, val introducedBy: Node) {
 
   if (introducedBy != null) introducedBy.env = this
@@ -127,7 +210,6 @@ class Env(var id: String, val parent: Env, val introducedBy: Node) {
       if (parent != null) parent.getForward(name)
       else None
   }
-
   
   def putRestriction(name: String, res: Restriction) = restrictions.put(name, res)
 
@@ -214,5 +296,4 @@ object Env {
     count = count + 1
     new Env("env" + count, env, introducedBy) 
   }
-  
 }

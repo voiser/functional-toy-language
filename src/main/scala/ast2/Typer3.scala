@@ -8,34 +8,25 @@ package ast2
  * @author david
  */
 
-class TyvarGenerator(prefix: String) {
-  var n = 0
-  
-  def get() = {
-    n = n + 1
-    Tyvar(prefix + n, List[String]())
-  }
-  
-  def get(v : Tyvar) = {
-    n = n + 1
-    Tyvar(prefix + n, v.restrictions)
-  }
-}
-
-case class TraceElement(message: String, node: Node)
-
-
+/**
+ * Traverses a systax tree, typing each expression and checking for correctness
+ */
 object Typer3 {
   
+  /**
+   * Some basic types
+   */
   val eqType = Restriction("Eq", List())
   val numType = Restriction("Num", List(eqType))
-  
   val intType = Tycon("Int", List(), List(numType))
   val stringType = Tycon("Str", List(), List(eqType))
   val floatType = Tycon("Float", List(), List(numType))
   val boolType = Tycon("Bool", List(), List(eqType))
   val unitType = Tycon("Unit")
-  
+
+  /**
+   * Obtains all type variables from a type
+   */
   def tyvars(t: Ty) : List[Tyvar] = t match {
     case tv @ Tyvar(name, res) => List(tv)
     case Tyfn(in, out) => 
@@ -45,7 +36,15 @@ object Typer3 {
   }
   
   /**
+   * Models a type substitution.
    * 
+   * a = Tyvar("a")
+   * b = Tyvar("b")
+   * int = Tycon("int")
+   * s = emptySubst.extend(a, int) 
+   * 
+   * s(a) -> int
+   * s(b) -> b
    */
   abstract class Subs extends Function1[Ty, Ty] {
   
@@ -76,6 +75,9 @@ object Typer3 {
     }
   }
   
+  /**
+   * The empty substitution.
+   */
   val emptySubst = new Subs { 
     def lookup(t: Tyvar) : Ty = t
     def repr = ""
@@ -84,10 +86,20 @@ object Typer3 {
   /**
    * 
    */
-  
   def exception(message: String, n: Node) (implicit trace: List[TraceElement]) =
     throw new TypeException(message, n, trace)
   
+  /**
+   * Unifies two types, that is, finds a substitution that applied to the first type gives the second one.
+   * 
+   * s = emptySubst
+   * a = Tyvar("a")
+   * int = Tycon("int")
+   * 
+   * s1 = unify(a, int, s)
+   * 
+   * s1(a) -> int
+   */
   def unify(t1: Ty, t2: Ty, s: Subs, n: Node) (implicit gen: TyvarGenerator, trace: List[TraceElement]) : Subs = {
     val s1 = s(t1)
     val s2 = s(t2)
@@ -135,24 +147,39 @@ object Typer3 {
     }
   }
   
+  /**
+   * Finds the forward definition node for a given function name
+   */
   def getForward(x: Node, env: Env, n: String)(implicit trace: List[TraceElement]) = 
     env.getForward(n) match {
       case None => throw new TypeException("Can't find forward in env. This is a compiler bug", x, mktrace("When locating forward node", x, trace))
       case Some(fwd) =>
         fwd     
   }
-  
+
+  /**
+   * When a function has a forward definition, checks that the forward and its inferred types are equivalent
+   * 
+   * Suppose: 
+   * 
+   * f :: a+Num, b+Num -> c+Num
+   * def f = { x, y -> add(x, y) }
+   * 
+   * The inferred type is:
+   * 
+   * a+Num, a+Num -> a+Num
+   * 
+   * The inferred and forward types can be unified, but the forward 
+   * definition is not valid (it's more general than the inferred). 
+   * 
+   */
   def checkForward(fname: String, forward: Ty, computed: Ty, n: Node, nf: Node, trace: List[TraceElement]) = {
     def regen(ty: Ty) = {
       val gen = new TyvarGenerator("t")
       (emptySubst /: tyvars(ty))((s, t) => s.extend(t, gen.get(t)))(ty)
     }
-    //println("The forward type is " + forward.repr)
-    //println("The computd type is " + computed.repr)
     val cleanf = regen(forward)
     val cleanc = regen(computed)
-    //println("The forward type is " + cleanf.repr)
-    //println("The computd type is " + cleanc.repr)
     val matches = (cleanf.repr == cleanc.repr)
     if (!matches) {
       val t1 = TraceElement("The computed definition is " + cleanc.repr, n)
@@ -162,25 +189,62 @@ object Typer3 {
   }
   
   /**
+   * Finds the type of a syntax tree node. 
+   * When traversing the AST, each node is assigned a new type variable. This method
+   * finds a substitution that, applied to that type variable, gives the node's type.
+   * A simple example:
+   *  
+   * def a = 1
    * 
+   * The AST is NDef("a", NInt(1))
+   * step 1     ^^^^^^^^^^^^^^^^^^ assign type t1     substitution = empty                     env("a") = t1
+   * step 2               ^^^^^^^  try to type this
+   * step 3                        assign type t2
+   * step 4                        this is an int
+   * step 5                        unify (t2, int)    substitution = (t2 -> int)
+   * step 6     ^^^^^^^^^^^^^^^^^^ unify (t1, t2)     substitution = (t1 -> int, t2 -> int)    env("a") = substitution(t1) = int
    */
   def tp(env: Env, n: Node, t: Ty, s: Subs) (implicit gen: TyvarGenerator, trace: List[TraceElement]) : Subs = {
     n.env = env
     
+    // Utility function to add a trace
     def trac(s: String) = mktrace(s, n, trace)
     
+    // Keep in mind that when typing a node "n", a type "t" has already been assigned to the node
     val tysub = n match {
       
+      /*
+       * Forward expression
+       * Store the forward type
+       * Unify t with the given type
+       * 
+       * f :: Int -> Int
+       * 
+       * env("f$$forward") = Int -> Int
+       */
       case a @ NForward(name, gty) =>
         val ty = Typegrammar.toType(gty, env)
         env.put(name + "$$forward", ty)
         env.putForward(name + "$$forward", a)
         unify(t, ty, s, n)(gen, trac("When typing forward definition"))
       
+      /*
+       * Basic expressions
+       * Unify t with the corresponding base type
+       */
       case a : NInt => unify(t, intType, s, n)(gen, trac("When typing Int"))
       case a : NFloat => unify(t, floatType, s, n)(gen, trac("When typing Float"))
       case a : NString => unify(t, stringType, s, n)(gen, trac("When typing String"))
       
+      /*
+       * Reference expression, like in 
+       * 
+       * def a = 9
+       * def b = a
+       * 
+       * Find the referenced name's type in the env
+       * unify t with it
+       */
       case a @ NRef(name) =>
         val u = env.get(name)
         u match {
@@ -188,48 +252,94 @@ object Typer3 {
           case Some(typescheme) => unify(t, typescheme.newInstance(gen), s, n)
         }
 
+      /*
+       * Definition expression
+       */
       case a @ NDef(name, ex) =>
         val u = env.get(name)
         u match {
           case Some(typescheme) => throw new TypeException("'" + name + "' is already defined", n, trac("When typing the definition of " + name))
           case None =>
-            env.get(name + "$$forward") match {
-              case Some(ts) =>
+            (env.get(name + "$$forward"), ex) match {
+              
+              /*
+               * No forward definition
+               * 
+               * def x = ...
+               * 
+               * Type the expression, store its type in the environment and unify t with it
+               * 
+               */
+              case (None, ex) =>
+                val a = gen.get()
+                env.put(name, a)
+                val s1 = tp(env, ex, t, s)
+                env.put(name, s1(t))
+                s1
+              
+              /*
+               * There is a forward definition and it's a function
+               * 
+               * f :: Int -> Int
+               * def f = { ... }
+               * 
+               * Infer the function type by typing the function expression.
+               * The forward and inferred types should be unifiable and equivalent (see #checkForward)
+               */
+              case (Some(ts), ex @ NFn(params, _)) =>
                 val fwd = getForward(ex, env, name + "$$forward")
                 val newtrace = mktrace("The forward definition is " + fwd.ty.repr, fwd, trace)
-                ex match {
-                  case x @ NFn(params, ex) if (x.hasTypedArgs) =>
-                    throw new TypeException("Function " + name + " can't have typed arguments because it has a forward definition", x.typedArgs(0), newtrace)
-                    
-                  case _ =>
-                }
+                if (ex.hasTypedArgs) throw new TypeException("Function " + name + " can't have typed arguments because it has a forward definition", ex.typedArgs(0), newtrace)
                 val forward = ts.newInstance(gen)
-                val env1 = env
-                env1.put(name, forward)
-                val s1 = tp(env1, ex, t, s)
+                env.put(name, forward)
+                val s1 = tp(env, ex, t, s)
                 val computed = s1(t)
                 val s2 = unify(forward, computed, s1, n)(gen, newtrace)
                 checkForward(name, fwd.ty, s1(t), n, fwd, trace)
-                env1.put(name, s2(t))
-                ex match {
-                  case x @ NFn(params, ex) =>
-                    x.ty = s2(t)
-                                        
-                  case _ =>
-                }
+                env.put(name, s2(t))
+                ex.ty = s2(t)
                 s2
                 
-              case None =>
-                val env1 = env
-                val a = gen.get()
-                env1.put(name, a)
-            
-                val s1 = tp(env1, ex, t, s)
-                env.put(name, s1(t))
-                s1
+              /*
+               * There is a forward definition, and it's not a function
+               * 
+               * f :: List[Int]
+               * def f = [1, 2, 3]
+               * 
+               * Like the previous case without function-specific stuff
+               */
+              case (Some(ts), ex) =>
+                val fwd = getForward(ex, env, name + "$$forward")
+                val newtrace = mktrace("The forward definition is " + fwd.ty.repr, fwd, trace)
+                val forward = ts.newInstance(gen)
+                env.put(name, forward)
+                val s1 = tp(env, ex, t, s)
+                val computed = s1(t)
+                val s2 = unify(forward, computed, s1, n)(gen, newtrace)
+                checkForward(name, fwd.ty, s1(t), n, fwd, trace)
+                env.put(name, s2(t))
+                s2
             }
         }
       
+      /*
+       * Function expression
+       * 
+       * { x, y Int -> add(x, y) }
+       * 
+       * generate new function type:
+       * 
+       * t' = a, Int -> c
+       * 
+       * Unify t with t'
+       * Generate a new env and store each parameter type:
+       *   env' ("x") = a
+       *   env' ("y") = Int
+       * Type the function expression in this new environment
+       * Store the inferred types:
+       *   env' ("x") = Int
+       *   env' ("y") = Int 
+       */
       case x @ NFn(params, ex) =>
         def f(p: NFnArg) : Ty = {
           val n = p.name
@@ -251,7 +361,11 @@ object Typer3 {
         val ret = tp(env1, ex, b, s1)
         (params zip a).foreach { x => env1.put(x._1.name, null, TypeScheme(List(), ret(x._2)))}
         ret
-        
+      
+      /*
+       * Function application
+       * f(a, b, c)
+       */
       case x @ NApply(name, args) => 
         val a = args.map { x => gen.get() }
         val candidates = env.get2(name).map { _._1}.sortBy { x => x.length }
@@ -263,24 +377,45 @@ object Typer3 {
           s2
         }
         candidates match {
+          
+          /*
+           * The function is not defined
+           */
           case List() =>
             throw new TypeException("Can't find definition of '" + name + "'", n, trac("When typing a function call"))
-          case List(n) =>
-            val newtrace = 
-              if (n.endsWith("$$forward")) {
-                val fwd = getForward(x, env, n)
-                mktrace("The forward definition is " + fwd.ty.repr, fwd, trace)
-              }
-              else trace
+            
+          /*
+           * There is only the forward definition
+           */
+          case List(n) if (n.endsWith("$$forward")) =>
+            val fwd = getForward(x, env, n)
+            val newtrace = mktrace("The forward definition is " + fwd.ty.repr, fwd, trace)
             x.realName = n.replace("$$forward", "")
             typ(n)(newtrace)
+
+          /*
+           * The function is defined and there is no forward definition
+           */
+          case List(n) =>
+            x.realName = n
+            typ(n)
+            
+          /*
+           * Both the real function and its forward declaration are defined
+           */
           case List(a, b) if (b == a + "$$forward") =>
             x.realName = a
             typ(a)
           case _ =>
             throw new TypeException("Too many candidates for '" + name + "'. This is a compiler bug", n, trac("When typing a function call"))
         }
-        
+      
+      /*
+       * 'If' expression
+       * 
+       * Unify the condition with boolean and the two branches between themselves. 
+       * Unify t with the branches type.
+       */
       case NIf(cond, e1, e2) =>
         val a, b, c = gen.get()
         val conds = tp(env, cond, a, s)
@@ -291,6 +426,11 @@ object Typer3 {
         val s4 = unify(t, s3(b), s3, n)(gen, trac("When typing a false branch"))
         s4
         
+      /*
+       * Block expression
+       * Assign a new var to each subexpression, and type it.
+       * Unify t with the last expression's type.
+       */
       case NBlock(exs) =>
         val env1 = env
         var b: Tyvar = null
@@ -300,15 +440,19 @@ object Typer3 {
           x
         }
         unify(t, s1(b), s1, n)
-        
-      case _ => throw new TypeException("Can't type node " + n, n, trac("When typing a generic node"))
     }
     n.ty = tysub(t)
     tysub
   }
   
+  /**
+   * Utility function to append a new trace element to an already existing trace
+   */
   def mktrace(t: String, n: Node, trace: List[TraceElement]) = TraceElement(t, n) :: trace
   
+  /**
+   * It all starts here.
+   */
   def getType(env: Env, n: Node) = {
     val gen = new TyvarGenerator("t")
     val rootVar = gen.get()
