@@ -29,16 +29,19 @@ class CodegenTests extends FunSuite {
         Main.showException(e, code2)
     }
   }
-  
+
   /*
   test("Intermediate") { // manual test
     val code = """
-      f :: a+Eq, b -> List[b]
-      def f = { x, y -> 
-        eq(x, x)
-        list(y)
+      
+      f : (Int -> a) -> a
+      f = { x -> 
+        x(1)
       }
-      f(1, 2)
+      
+      f' = { x' -> x' }
+      
+      f(f')
       """
     println("result = " + intermediate(code))
   }

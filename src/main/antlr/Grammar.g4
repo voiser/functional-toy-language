@@ -33,7 +33,7 @@ fn : '{' block '}'
 fnargpair : ID CLASSID?
           ;
 
-def : 'def' ID '=' expression
+def : ID '=' expression
     ;
 
 apply : ID '(' ')'
@@ -45,10 +45,10 @@ ref : ID ;
 cond : 'if' condition=expression 'then' exptrue=expression 'else' expfalse=expression
      ;
 
-forward : ID '::' ty=tydef
+forward : ID ':' ty=tydef
         ;
 
-tydef : CLASSID | ID | RESTRICTION | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef | tydef ',' tydef 
+tydef : CLASSID | ID | RESTRICTION | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef | tydef ',' tydef  | '(' tydef ')'
       ;
 
 binary : xleft=binexp op=BINOP right=binexp
@@ -71,7 +71,7 @@ mappair : mapkey=expression ':' mapvalue=expression
         ;
 
 IMPORT : [a-z\.]+ '.' [a-z][a-zA-Z0-9_\-]+ ;
-ID : [a-z][a-zA-Z0-9_\-]* ;
+ID : [a-z][a-zA-Z0-9_\-']* ;
 CLASSID : [A-Z][a-zA-Z]* ;
 INTEGER : [0-9]+ ;
 FLOAT : [0-9]* '.' [0-9]+ ;

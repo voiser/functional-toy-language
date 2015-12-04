@@ -24,8 +24,8 @@ class BasicTests extends FunSuite {
   
   test ("1 + 2 = 3") { 
     val code = """
-      def a = 1
-      def b = 2
+      a = 1
+      b = 2
       add(a, b)
       """
     val ret = run(code)
@@ -42,8 +42,8 @@ class BasicTests extends FunSuite {
   
   test("Forward definition") {
     val code = """
-      g :: Int -> Int
-      def g = { x -> g(x) }
+      g : Int -> Int
+      g = { x -> g(x) }
       g(1)
     """
     try {
@@ -57,7 +57,7 @@ class BasicTests extends FunSuite {
   
   test("Recursive call") {
     val code = """
-      def f = { x -> if eq(x, 2) then x else times(x, f(sub(x, 1))) }
+      f = { x -> if eq(x, 2) then x else times(x, f(sub(x, 1))) }
       f(4)
       """
     val ret = run(code)
@@ -66,9 +66,9 @@ class BasicTests extends FunSuite {
 
   test("Mutual recursion") {
     val code = """
-      g :: Int -> Int
-      def f = { x -> if eq(x, 2) then x else times(x, g(sub(x, 1))) }
-      def g = { x -> f(x) }
+      g : Int -> Int
+      f = { x -> if eq(x, 2) then x else times(x, g(sub(x, 1))) }
+      g = { x -> f(x) }
       f(4)
       """
     val ret = run(code)
@@ -77,7 +77,7 @@ class BasicTests extends FunSuite {
   
   test("binary op") {
     val code = """
-      def a = 1 + (2 * 3) - (4 / 2)
+      a = 1 + (2 * 3) - (4 / 2)
       a
       """
     val ret = run(code)
@@ -86,9 +86,9 @@ class BasicTests extends FunSuite {
   
   test("Mutual recursion with binary operations") {
     val code = """
-      g :: Int -> Int
-      def f = { x -> if x == 2 then x else x * g(x - 1) }
-      def g = { x -> f(x) }
+      g : Int -> Int
+      f = { x -> if x == 2 then x else x * g(x - 1) }
+      g = { x -> f(x) }
       f(4)
       """
     val ret = run(code)
@@ -97,9 +97,9 @@ class BasicTests extends FunSuite {
 
   test("Generics and forward definitions") {
     val code = """
-      g :: a -> List[a]
-      def f = { x -> g(x) }
-      def g = { x -> list(x) }
+      g : a -> List[a]
+      f = { x -> g(x) }
+      g = { x -> list(x) }
       f(4)
       """
     val ret = run(code)
@@ -108,7 +108,7 @@ class BasicTests extends FunSuite {
   
   test("Syntactic sugar for lists") {
     val code = """
-      def xs = [1, 2, 3]
+      xs = [1, 2, 3]
       """
     val ret = run(code)
     assert ("[1 2 3]" == ret.toString())
@@ -116,7 +116,7 @@ class BasicTests extends FunSuite {
   
   test("Dict and extend") {
     val code = """
-      def m = dict("Name", "John")
+      m = dict("Name", "John")
       extend("Surname", "Surjohn", m)
       """
     val ret = run(code)
@@ -125,7 +125,7 @@ class BasicTests extends FunSuite {
   
   test("Syntactic sugar for maps") {
     val code = """
-      def m = ["a":1, "b":2]
+      m = ["a":1, "b":2]
       m
       """
     val ret = run(code)
@@ -134,17 +134,17 @@ class BasicTests extends FunSuite {
   
   test("Forwards, lists and maps") {
     val code = """
-      a :: List[Int]
-      b :: Dict[Str, Int]
-      def a = [1, 2, 3]
-      def b = ["a": 1, "b": 2]
+      a : List[Int]
+      b : Dict[Str, Int]
+      a = [1, 2, 3]
+      b = ["a": 1, "b": 2]
       """
     run(code) // assert no error
   }
   
   test("Typed params") {
     val code = """
-      def f = { a Int, b Int -> a + b }
+      f = { a Int, b Int -> a + b }
       f(1, 2)
       """
     val ret = run(code)
@@ -153,8 +153,8 @@ class BasicTests extends FunSuite {
 
   test("Typed params and forwards") {
     val code = """
-      f :: Int, Int -> Int
-      def f = { a Int, b Int -> a + b }
+      f : Int, Int -> Int
+      f = { a Int, b Int -> a + b }
       f(1, 2)
       """
     try {
@@ -168,8 +168,8 @@ class BasicTests extends FunSuite {
   
   test("Anonymous functions, captures") {
     val code = """
-      def addcurried = { x -> { y -> add(x, y) } }
-      def addtwo = addcurried(2)
+      addcurried = { x -> { y -> add(x, y) } }
+      addtwo = addcurried(2)
       addtwo(19) 
       """
     val ret = run(code)
@@ -178,8 +178,8 @@ class BasicTests extends FunSuite {
   
   test("Anonymous functions, captures 2") {
     val code = """
-      def apply = { f -> { x -> f(x) } } 
-      def equalsToOne = apply({x -> eq(1, x)})
+      apply = { f -> { x -> f(x) } } 
+      equalsToOne = apply({x -> eq(1, x)})
       equalsToOne(2)
       """
     val ret = run(code)
