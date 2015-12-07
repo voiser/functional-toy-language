@@ -216,11 +216,12 @@ object Intermediate {
       function: CompilationUnitFunction,
       allLocals: List[(String, Node, Int)],
       captures: List[CreateCapture],
-      name: String) = {
+      name: String, 
+      funcname: String) = {
     
-    val destname = unit.module.name + "/" + name
+    val destname = unit.module.name + "/" + funcname
     val local = flocal(name, allLocals)
-    val params = unit.unitFunctions.find { f => f.name == name } match {
+    val params = unit.unitFunctions.find { f => f.name == funcname } match {
       case None => throw new RuntimeException("Ouch! This is a compiler bug")
       case Some(u) => 
         u.captures.map { x => 
@@ -246,7 +247,7 @@ object Intermediate {
     val externs = function.externs.map { x => CreateExtern(x._1, function.root.env.getFull(x._1).replace(".", "/"), codegenType(x._2)) }
     val locals = function.locals.map { x => CreateLocal(x._1, x._3, codegenType(x._2.ty)) }
 
-    val allLocals = function.params ++ function.locals
+    val allLocals = (function.locals ++ function.params).distinct
     
     val instantiations = function.root.value.children.collect { 
       case NDef(name, v: NFn) =>
@@ -264,9 +265,9 @@ object Intermediate {
     }
    
     val initializations = function.root.value.children.collect {
-      case NDef(name, v: NFn) => createInitialize(unit, function, allLocals, captures, v.name)
-      case a @ NDefAnon(name, _) if (a.env.parent == function.root.value.env) => createInitialize(unit, function, allLocals, captures, name)
-      case x @ NRefAnon(name) => createInitialize(unit, function, allLocals, captures, name)
+      case NDef(name, v: NFn) => createInitialize(unit, function, allLocals, captures, name, v.name)
+      case a @ NDefAnon(name, _) if (a.env.parent == function.root.value.env) => createInitialize(unit, function, allLocals, captures, name, name)
+      case x @ NRefAnon(name) => createInitialize(unit, function, allLocals, captures, name, name)
     }
     val code = function.root.value.children.map { x =>
       translate(unit, function, allLocals, externs, captures, x) 

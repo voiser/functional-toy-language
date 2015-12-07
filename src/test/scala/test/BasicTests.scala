@@ -185,4 +185,20 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert("False" == ret.toString())
   }
+  
+  test("Hop captures") {
+    val code = """
+      a = 1
+      f = { x ->
+        g = { y -> add(y, a)}
+        g(x)
+      }
+      g = {
+        add(1, 1)
+      }
+      f(16)
+      """
+    val ret = run(code)
+    assert("17" == ret.toString())
+  }
 }

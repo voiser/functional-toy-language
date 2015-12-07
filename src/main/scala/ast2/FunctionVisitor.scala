@@ -131,9 +131,16 @@ class AnonymousFunctionNamerVisitor(module: NModule) extends Visitor {
 }
 
 class FetchRefsVisitor(root: NFn) extends Visitor {
-  
+
   val captured = scala.collection.mutable.ArrayBuffer[NRef]()  //val intro = scala.collection.mutable.ArrayBuffer[NRef]()
-  //val recursive = scala.collection.mutable.ArrayBuffer[NRef]()
+
+  val myvars = root.value.children.collect {
+    case NDef(name, v) =>
+      NRef(name)
+  }
+  visit(root.value)
+  
+  def captures = captured.diff(myvars)
   
   override def visitNRef(n: NRef) {
     val e1 = n.env
@@ -179,9 +186,6 @@ class FetchRefsVisitor(root: NFn) extends Visitor {
       }
     }
   }
-  
-  override def visit(n: NFn) {
-  }  
 }
 
 
@@ -197,8 +201,9 @@ class FunctionVisitor(module: NModule) extends Visitor {
     //println("Oh I found a function! Is it a closure?")
     //println("  This function introduces environment " + n.env.repr)
     val v = new FetchRefsVisitor(n)
-    v.visit(n.value)
-    functions += Function(n, v.captured.toList) //, v.recursive.toList))
+    val r = Function(n, v.captures.toList) //, v.recursive.toList))
+    //println("Function " + n.name + " has these captures: " + r.captures)
+    functions += r
     super.visitNFn(n)
   }
 }
