@@ -8,8 +8,8 @@ object Main {
 
   def rootEnv = {
     val env = Env()
-    val a = Tyvar("a", List())
-    val b = Tyvar("b", List())
+    val a = Tyvar("a")
+    val b = Tyvar("b")
     
     val eq = Typer3.eqType
     val num = Typer3.numType
@@ -25,8 +25,8 @@ object Main {
     env.putRestriction("Eq", eq)
     env.putRestriction("Num", num)
 
-    val aeq = Tyvar("aeq", eq.all)
-    val anum = Tyvar("anum", num.all)
+    val aeq = Tyvar("aeq")
+    val anum = Tyvar("anum")
     
     env.putType("Int", int)
     env.putType("Float", float)

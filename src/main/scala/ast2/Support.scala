@@ -101,11 +101,8 @@ case class Tyfn(in: List[Ty], out: Ty) extends Ty {
 case class Tycon(name: String, types: List[Ty], restrictions: List[Restriction]) extends Ty {
   override def repr = name + (if (types.size == 0) "" else types.map { _.repr}.mkString("[", ",", "]"))
 } 
-case class Tyvar(name: String, restrictions: List[String]) extends Ty {
-  override def repr = name + restrictions.map {"+" + _.repr}.mkString("")
-}
-case class TyAny() extends Ty {
-  override def repr = "Any"
+case class Tyvar(name: String) extends Ty {
+  override def repr = name
 }
 object Tycon {
   def apply(name: String) : Tycon = Tycon(name, List(), List())
@@ -129,12 +126,7 @@ class TyvarGenerator(prefix: String) {
   
   def get() = {
     n = n + 1
-    Tyvar(prefix + n, List[String]())
-  }
-  
-  def get(v : Tyvar) = {
-    n = n + 1
-    Tyvar(prefix + n, v.restrictions)
+    Tyvar(prefix + n)
   }
 }
 

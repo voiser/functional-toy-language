@@ -18,6 +18,7 @@ object Typer3 {
    */
   val eqType = Restriction("Eq", List())
   val numType = Restriction("Num", List(eqType))
+
   val intType = Tycon("Int", List(), List(numType))
   val stringType = Tycon("Str", List(), List(eqType))
   val floatType = Tycon("Float", List(), List(numType))
@@ -28,7 +29,7 @@ object Typer3 {
    * Obtains all type variables from a type
    */
   def tyvars(t: Ty) : List[Tyvar] = t match {
-    case tv @ Tyvar(name, res) => List(tv)
+    case tv @ Tyvar(name) => List(tv)
     case Tyfn(in, out) => 
       val x = (in flatMap { x => tyvars(x) }) 
       x union tyvars(out) distinct
@@ -55,7 +56,7 @@ object Typer3 {
     override def toString() = "subs: " + repr
     
     def apply(a: Ty) : Ty = a match {
-      case x @ Tyvar(name, res) =>
+      case x @ Tyvar(name) =>
         val v = lookup(x)
         if (v == a) a
         else apply(v)
@@ -65,8 +66,6 @@ object Typer3 {
         
       case Tycon(name, types, isa) =>
         Tycon(name, types map apply, isa)
-        
-      case TyAny() => a
     }
 
     def extend(origin: Tyvar, dest: Ty) : Subs = new Subs {
@@ -106,32 +105,16 @@ object Typer3 {
     val tr = mktrace("When unifying " + t2 + "(" + s1 + ") with " + t1 + "(" + s2 + ")", n, trace)
     (s1, s2) match {
       
-      case (a @ Tyvar(na, List()), b @ Tyvar(nb, _)) =>
+      case (a @ Tyvar(na), b @ Tyvar(nb)) =>
         if (na == nb) s
         else s.extend(a, b)
           
-      case (_, a @ Tyvar(na, List())) =>
+      case (_, a @ Tyvar(na)) =>
         unify(t2, t1, s, n)
-      
-      case (a @ Tyvar(na, resa), b @ Tyvar(nb, resb)) => 
-        val allRestrictions = (resa ++ resb).distinct
-        val newTyvar = Tyvar(gen.get().name, allRestrictions)
-        s.extend(a, newTyvar).extend(b, newTyvar)  
-      
-      case (a @ Tyvar(name, res), x @ Tycon(nam, tv, res1)) if !(tyvars(x) contains a) =>
-        val res2 = res1.flatMap { z => z.all }.distinct
-        res.foreach { z => 
-          if (!res2.contains(z)) 
-            exception("Can't unify " + s1.repr + " with " + s2.repr + ": The type " + x.repr + " does not guarantee " + z, n)
-        }
+
+      case (a @ Tyvar(name), x) if !(tyvars(x) contains a) =>
         s.extend(a, x)
 
-      case (a @ Tyvar(name, List()), x) if !(tyvars(x) contains a) =>
-        s.extend(a, x)
-
-      case (a @ Tyvar(name, res), x) if !(tyvars(x) contains a) =>
-        exception("TODO: I have to guarantee that " + x + " meets the restrictions " + res, n)
-        
       case (Tyfn(in1, out1), Tyfn(in2, out2)) =>
         if (in1.length != in2.length) exception("Arguments do not match. Given " + in1.length + ", required " + in2.length, n)
         val s1 = (s /: (in1 zip in2)) ((s, tu) => unify(tu._1, tu._2, s, n))
@@ -139,9 +122,6 @@ object Typer3 {
         
       case (Tycon(n1, tv1, isa1), Tycon(n2, tv2, isa2)) if (n1 == n2) =>
         (s /: (tv1 zip tv2)) ((s, tu) => unify(tu._1, tu._2, s, n))
-        
-      case (_, Tyvar(na, _)) =>
-        unify(t2, t1, s, n)
         
       case _ => exception("Type mismatch: incompatible types " + s1.repr + " and " + s2.repr, n)
     }
@@ -176,7 +156,7 @@ object Typer3 {
   def checkForward(fname: String, forward: Ty, computed: Ty, n: Node, nf: Node, trace: List[TraceElement]) = {
     def regen(ty: Ty) = {
       val gen = new TyvarGenerator("t")
-      (emptySubst /: tyvars(ty))((s, t) => s.extend(t, gen.get(t)))(ty)
+      (emptySubst /: tyvars(ty))((s, t) => s.extend(t, gen.get()))(ty)
     }
     val cleanf = regen(forward)
     val cleanc = regen(computed)

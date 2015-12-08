@@ -57,7 +57,7 @@ object Typegrammar {
   def toType(ty: GTy, env: Env) : Ty = ty match {
     
     case GTyvar(name, restrictions) =>
-      Tyvar(name, restrictions)
+      Tyvar(name)
     
     case GTycon(name, params) =>
       env.getType(name) match {
