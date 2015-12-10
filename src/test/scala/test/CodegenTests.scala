@@ -6,6 +6,7 @@ import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
 import java.lang.reflect.InvocationTargetException
 import intermediate.Intermediate
+import org.xml.sax.helpers.NewInstance
 
 /**
  * @author david
@@ -29,24 +30,23 @@ class CodegenTests extends FunSuite {
         Main.showException(e, code2)
     }
   }
+  
+  def ty(code: String) = {
+    val lexer = new TypegrammarLexer(new ANTLRInputStream(code))
+    val parser = new TypegrammarParser(new CommonTokenStream(lexer))
+    val cst = parser.ty()
+    val gty = new TypeVisitor().visitTy(cst)
+    val ty = Typegrammar.toType(gty)
+    ty
+  }
 
   /*
   test("Intermediate") { // manual test
     val code = """
-      a = 1
-      
-      f = { x ->
-        g = { y -> add(y, a)}
-        g(x)
-      }
-      
-      g = {
-        add(1, 1)
-      }
-      
-      f(19)
+      factorial = { x -> if x == 2 then x else x * factorial(x - 1) }
+      factorial(4)
       """
-    println("result = " + intermediate(code))
+    println(intermediate(code))
   }
   */
 }

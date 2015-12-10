@@ -16,24 +16,20 @@ object Typer3 {
   /**
    * Some basic types
    */
-  val eqType = Restriction("Eq", List())
-  val numType = Restriction("Num", List(eqType))
-
-  val intType = Tycon("Int", List(), List(numType))
-  val stringType = Tycon("Str", List(), List(eqType))
-  val floatType = Tycon("Float", List(), List(numType))
-  val boolType = Tycon("Bool", List(), List(eqType))
-  val unitType = Tycon("Unit")
+  val intType = Tycon("Int", List())
+  val stringType = Tycon("Str", List())
+  val floatType = Tycon("Float", List())
+  val boolType = Tycon("Bool", List())
 
   /**
    * Obtains all type variables from a type
    */
   def tyvars(t: Ty) : List[Tyvar] = t match {
-    case tv @ Tyvar(name) => List(tv)
+    case tv @ Tyvar(name, rs) => (rs flatMap {_.tyvars}) ++ List(tv) 
     case Tyfn(in, out) => 
       val x = (in flatMap { x => tyvars(x) }) 
       x union tyvars(out) distinct
-    case Tycon(k, ts, isa) => (List[Tyvar]() /: ts) ((tvs, t) => tvs union tyvars(t)) distinct 
+    case Tycon(k, ts) => (List[Tyvar]() /: ts) ((tvs, t) => tvs union tyvars(t)) distinct
   }
   
   /**
@@ -56,16 +52,30 @@ object Typer3 {
     override def toString() = "subs: " + repr
     
     def apply(a: Ty) : Ty = a match {
-      case x @ Tyvar(name) =>
+      case x @ Tyvar(name, List()) =>
         val v = lookup(x)
         if (v == a) a
         else apply(v)
         
+      case x @ Tyvar(name, res) =>
+        lookup(x) match {
+          case Tyvar(name2, res) =>
+            Tyvar(name2, res map apply)
+          case x => x 
+        }
+        
       case Tyfn(params, out) =>
         Tyfn(params map apply, apply(out))
         
-      case Tycon(name, types, isa) =>
-        Tycon(name, types map apply, isa)
+      case Tycon(name, types) =>
+        Tycon(name, types map apply)
+    }
+    
+    def apply(a: Restriction) : Restriction = a match {
+      case Isa(t) => apply(t) match {
+        case x : Tycon => Isa(x)
+        case _ => throw new Exception("what?")
+      }
     }
 
     def extend(origin: Tyvar, dest: Ty) : Subs = new Subs {
@@ -88,6 +98,31 @@ object Typer3 {
   def exception(message: String, n: Node) (implicit trace: List[TraceElement]) =
     throw new TypeException(message, n, trace)
   
+  
+  /**
+   * 
+   */
+  def checkRestriction(r: Restriction, t: Ty, s: Subs, n: Node) (implicit gen: TyvarGenerator, trace: List[TraceElement]) : Subs = {
+    (t, r) match {
+      case (x : Tycon, ty @ Isa(Tycon(name, params))) =>
+        //println("I am checking that " + x.repr + " is a " + ty.repr)
+        n.env.getIsa(x.name) match {
+          case None => exception("Can't check restriction", n)
+          case Some((orig, isa)) =>
+            isa.collect {
+              case x @ Tycon(n, tys) if (n == name) => x
+            } match {
+              case List() => exception("Can't check restriction. Seems that " + x.repr + " is not " + ty.repr, n)
+              case List(parent) =>
+              val s1 = unify(x, orig, s, n)
+              val real = s1(parent)
+              //println("OK, it seems that " + x.repr + " is a " + real.repr)
+              unify(ty.ty, real, s1, n)
+            }
+        }
+    }
+  }
+  
   /**
    * Unifies two types, that is, finds a substitution that applied to the first type gives the second one.
    * 
@@ -103,25 +138,39 @@ object Typer3 {
     val s1 = s(t1)
     val s2 = s(t2)
     val tr = mktrace("When unifying " + t2 + "(" + s1 + ") with " + t1 + "(" + s2 + ")", n, trace)
-    (s1, s2) match {
+    
+    // println("Unifying " + t1.repr + " (that is, " + s1.repr + ") and " + t2.repr + " (that is, " + s2.repr + ")")
+    
+    (t1, t2, s1, s2) match {
       
-      case (a @ Tyvar(na), b @ Tyvar(nb)) =>
+      case (_, _, a @ Tyvar(na, List()), b @ Tyvar(nb, List())) =>
         if (na == nb) s
         else s.extend(a, b)
           
-      case (_, a @ Tyvar(na)) =>
+      case (_, _, _, a @ Tyvar(na, List())) =>
         unify(t2, t1, s, n)
 
-      case (a @ Tyvar(name), x) if !(tyvars(x) contains a) =>
+      case (_, _, a @ Tyvar(name, List()), x) if !(tyvars(x) contains a) =>
         s.extend(a, x)
 
-      case (Tyfn(in1, out1), Tyfn(in2, out2)) =>
+      case (_, _, Tyfn(in1, out1), Tyfn(in2, out2)) =>
         if (in1.length != in2.length) exception("Arguments do not match. Given " + in1.length + ", required " + in2.length, n)
         val s1 = (s /: (in1 zip in2)) ((s, tu) => unify(tu._1, tu._2, s, n))
         unify(out1, out2, s1, n)
         
-      case (Tycon(n1, tv1, isa1), Tycon(n2, tv2, isa2)) if (n1 == n2) =>
+      case (_, _, Tycon(n1, tv1), Tycon(n2, tv2)) if (n1 == n2) =>
         (s /: (tv1 zip tv2)) ((s, tu) => unify(tu._1, tu._2, s, n))
+      
+      case (_, _, a : Tycon, b @ Tyvar(_, rs)) =>
+        unify(t2, t1, s, n)
+        
+      case (_, _, a @ Tyvar(nam, rs), b : Tycon) =>
+        val s1 = (s /: rs) ((s, r) => checkRestriction(r, b, s, n))
+        s1.extend(a, b)
+        
+      case (_, _, a @ Tyvar(n1, r1), b @ Tyvar(n2, r2)) if (r1 == r2) =>
+        if (n1 == n2) s
+        else s.extend(a, b)
         
       case _ => exception("Type mismatch: incompatible types " + s1.repr + " and " + s2.repr, n)
     }
@@ -187,6 +236,8 @@ object Typer3 {
   def tp(env: Env, n: Node, t: Ty, s: Subs) (implicit gen: TyvarGenerator, trace: List[TraceElement]) : Subs = {
     n.env = env
     
+    // println("Typing " + n)
+    
     // Utility function to add a trace
     def trac(s: String) = mktrace(s, n, trace)
     
@@ -203,7 +254,7 @@ object Typer3 {
        * env("f$$forward") = Int -> Int
        */
       case a @ NForward(name, gty) =>
-        val ty = Typegrammar.toType(gty, env)
+        val ty = Typegrammar.toType(gty)
         env.put(name + "$$forward", ty)
         env.putForward(name + "$$forward", a)
         unify(t, ty, s, n)(gen, trac("When typing forward definition"))

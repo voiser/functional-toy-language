@@ -6,55 +6,84 @@ import scala.collection.JavaConverters._
 
 object Main {
 
+  def register(child: String, env: Env) : Ty = register(child, List(), env) 
+  
+  def register(child: String, parents: List[String], env: Env) : Ty = {
+    def parentsOf(n: String) : List[String] = {
+      val myparents = env.getIsa(n) match {
+        case None => List()
+        case Some((x, y)) => 
+          y.collect {
+            case z : Tycon => z.name
+          }
+      }
+      val theirparents = myparents flatMap parentsOf
+      (myparents ++ theirparents).distinct
+    }
+    
+    val allparents = parents ++ (parents flatMap parentsOf)
+    val ty = tycon(child)
+    env.putType(ty.name, ty)
+    isa(ty, allparents, env)
+  }
+  
+  def isa(ty: Tycon, parents: List[String], env: Env) = {
+    val ps = parents map tycon
+    val res = ps.map { p => 
+      env.getType(p.name) match {
+        case Some(Tycon(name, params)) => p
+        case _ => throw new Exception("Can't find type " + p + " in the environment.")
+      }
+    }
+    env.putIsa(ty, res)
+    ty
+  }
+  
+  def register(name: String, nativefn: String, ty: String, env: Env) : Ty = {
+    val tyf = parseType(ty)
+    val tyvars = Typer3.tyvars(tyf)
+    val ts = TypeScheme(tyvars, tyf)
+    env.put(name, nativefn, ts)
+    tyf
+  }
+  
   def rootEnv = {
     val env = Env()
-    val a = Tyvar("a")
-    val b = Tyvar("b")
-    
-    val eq = Typer3.eqType
-    val num = Typer3.numType
-    
-    val int = Typer3.intType
-    val float = Typer3.floatType
-    val bool = Typer3.boolType
-    val unit = Typer3.unitType
-    val str = Typer3.stringType
-    val listType = Tycon("List", List(a), List())
-    val dictType = Tycon("Dict", List(a, b), List())
-    
-    env.putRestriction("Eq", eq)
-    env.putRestriction("Num", num)
 
-    val aeq = Tyvar("aeq")
-    val anum = Tyvar("anum")
+    register("Eq",   env)
+    register("Num", List("Eq"), env)
     
-    env.putType("Int", int)
-    env.putType("Float", float)
-    env.putType("Bool", bool)
-    env.putType("Str", str)
-    env.putType("Unit", unit)
-    env.putType("List", listType)
-    env.putType("Dict", dictType)
+    register("Bool", env)
+    register("Str",  List("Eq"), env)
+    register("Unit", env)
     
-    env.put("true", "runtime/True", TypeScheme(List(), bool))
-    env.put("false", "runtime/False", TypeScheme(List(), bool))
+    register("Int",   List("Num"), env)
+    register("Float", List("Num"), env)
 
-    env.put("add", "runtime/add", TypeScheme(List(), Tyfn(List(anum, anum), anum)))
-    env.put("sub", "runtime/sub", TypeScheme(List(), Tyfn(List(anum, anum), anum)))
-    env.put("times", "runtime/times", TypeScheme(List(), Tyfn(List(anum, anum), anum)))
-    env.put("div", "runtime/div", TypeScheme(List(), Tyfn(List(anum, anum), anum)))
+    register("id",    "runtime/id",    "a -> a",           env)
+    register("do",    "runtime/do_",   "(a -> b), a -> b", env) 
+    register("true",  "runtime/True",  "Bool",             env)
+    register("false", "runtime/False", "Bool",             env)
+    register("add",   "runtime/add",   "a+Num, a -> a",    env)
+    register("sub",   "runtime/sub",   "a+Num, a -> a",    env)
+    register("times", "runtime/times", "a+Num, a -> a",    env)
+    register("div",   "runtime/div",   "a+Num, a -> a",    env)
+    register("eq",    "runtime/eq_",   "a+Eq,  a -> Bool", env)
 
-    env.put("id", "runtime/id", TypeScheme(List(a), Tyfn(List(a), a)))
-    env.put("do", "runtime/do_", TypeScheme(List(a, b), Tyfn(List(Tyfn(List(a), b), a), b)))
-    env.put("eq", "runtime/eq_", TypeScheme(List(), Tyfn(List(aeq, aeq), bool)))
-    //env.put("puts", "runtime/puts", TypeScheme(List(), Tyfn(List(a), unit)))
+    register("Set[a]", env)
+    register("size", "runtime/size", "a+Set[s] -> Int", env)
+    register("oneof", "runtime/oneof", "a+Set[s] -> s", env)
+
+    register("List[x]", List("Set[x]"), env)
+    register("list", "runtime/list_of", "a -> List[a]", env)
+    register("cons", "runtime/cons", "a, List[a] -> List[a]", env)
+    register("nil", "runtime/Nil", "List[a]", env)
     
-    env.put("list", "runtime/list_of", TypeScheme(List(a), Tyfn(List(a), listType)))
-    env.put("cons", "runtime/cons", TypeScheme(List(a), Tyfn(List(a, listType), listType)))
-    env.put("nil",  "runtime/Nil", TypeScheme(List(a), listType))
+    register("Pair[l, r]", env)
     
-    env.put("dict", "runtime/dict_of", TypeScheme(List(a, b), Tyfn(List(a, b), dictType)))
-    env.put("extend", "runtime/extend", TypeScheme(List(a, b), Tyfn(List(a, b, dictType), dictType)))
+    register("Dict[k, v]", List("Set[Pair[k, v]]"), env)
+    register("dict", "runtime/dict_of", "a, b -> Dict[a, b]", env)
+    register("extend", "runtime/extend", "a, b, Dict[a, b] -> Dict[a, b]", env)
     
     env
   }
@@ -64,8 +93,18 @@ object Main {
     val parser = new TypegrammarParser(new CommonTokenStream(lexer))
     val cst = parser.ty()
     val gty = new TypeVisitor().visitTy(cst)
-    Typegrammar.toType(gty, Main.rootEnv)
+    Typegrammar.toType(gty)
   }
+  
+  def tycon(code: String) : Tycon = parseType(code) match {
+    case x : Tycon => x
+    case _ => throw new Exception("Type " + code + " is not a type constant")
+  }
+  
+  def tyfn(code: String) : Tyfn = parseType(code) match {
+    case x : Tyfn => x
+    case _ => throw new Exception("Type " + code + " is not a function type")
+  } 
   
   def process(filename: String, code: String) = {
     

@@ -28,7 +28,7 @@ class Typegrammar extends FunSuite {
     val parser = new TypegrammarParser(new CommonTokenStream(lexer))
     val cst = parser.ty()
     val gty = new TypeVisitor().visitTy(cst)
-    val ty = Typegrammar.toType(gty, Main.rootEnv)
+    val ty = Typegrammar.toType(gty)
     ty.repr
   }
 

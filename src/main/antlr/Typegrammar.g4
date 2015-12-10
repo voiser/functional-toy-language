@@ -22,7 +22,7 @@ generic : ID '[' ty2 (',' ty2)*  ']'
 var : VAR restriction*
     ;
 
-restriction : '+' ID
+restriction : '+' (simple | generic)
             ;
 
 fn : left (',' left)* '->' right=ty2 

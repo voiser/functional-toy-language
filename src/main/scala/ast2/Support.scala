@@ -26,7 +26,7 @@ case class KlassVar(name: String) extends KlassRef
 abstract class GTy
 case class GTycon(name: String, params: List[GTy]) extends GTy
 case class GTyfn(lefts: List[GTy], right: GTy) extends GTy
-case class GTyvar(name: String, restrictions: List[String]) extends GTy
+case class GTyvar(name: String, restrictions: List[GTy]) extends GTy
 
 
 /**
@@ -74,15 +74,15 @@ case class NForward(name: String, tydef: GTy) extends Node
 
 /**
  * A type restriction. 
- * Used to ensure that a polymorphic parameter offers some interface
- * 
- * def x = { x Int, y Int -> x + y }     has type (Int, Int) -> Int        (Monomorphic function)
- * def x = { x -> x }                    has type a -> a                   (Polymorphic function)
- * def x = { x a+Num, y a+Num -> a + b } has type (a+Num, a+Num) -> a+Num  (Polymorphic function with restrictions)
  */
-case class Restriction(name: String, isa: List[Restriction]) {
-  def repr: String = "+" + name
-  def all : List[String] = name :: isa.flatMap { x => x.all }
+abstract class Restriction
+{
+  def repr: String
+  def tyvars: List[Tyvar]
+}
+case class Isa(ty: Tycon) extends Restriction {
+  def repr = "+" + ty.repr
+  def tyvars = Typer3.tyvars(ty)
 }
 
 
@@ -98,14 +98,14 @@ case class Tyfn(in: List[Ty], out: Ty) extends Ty {
     "(" + (if (i == "") "()" else i) + " -> " + out.repr + ")"
   }
 }
-case class Tycon(name: String, types: List[Ty], restrictions: List[Restriction]) extends Ty {
+case class Tycon(name: String, types: List[Ty]) extends Ty {
   override def repr = name + (if (types.size == 0) "" else types.map { _.repr}.mkString("[", ",", "]"))
 } 
-case class Tyvar(name: String) extends Ty {
-  override def repr = name
+case class Tyvar(name: String, restrictions: List[Restriction]) extends Ty {
+  override def repr = name + restrictions.map{_.repr}.mkString("")
 }
 object Tycon {
-  def apply(name: String) : Tycon = Tycon(name, List(), List())
+  def apply(name: String) : Tycon = Tycon(name, List())
 }
 
 
@@ -126,7 +126,12 @@ class TyvarGenerator(prefix: String) {
   
   def get() = {
     n = n + 1
-    Tyvar(prefix + n)
+    Tyvar(prefix + n, List())
+  }
+  
+  def get(t: Tyvar) = {
+    n = n + 1
+    Tyvar(prefix + n, t.restrictions)
   }
 }
 
@@ -152,7 +157,11 @@ class TyvarGenerator(prefix: String) {
  */
 case class TypeScheme(tyvars: List[Tyvar], tpe: Ty) {
   def newInstance(gen: TyvarGenerator) : Ty = {
-    (Typer3.emptySubst /: tyvars) ((s, tv) => s.extend(tv, gen.get())) (tpe)
+    val s = (Typer3.emptySubst /: tyvars) { (s, tv) =>
+      val x = gen.get(tv)
+      s.extend(tv, Tyvar(x.name, tv.restrictions))
+    }
+    s(tpe)
   }
   
   def applyTo(tys: List[Ty]) = {
@@ -190,10 +199,20 @@ class Env(var id: String, val parent: Env, val introducedBy: Node) {
   val types = scala.collection.mutable.Map[String, Ty]()
   val restrictions = scala.collection.mutable.Map[String, Restriction]()
   val forwards = scala.collection.mutable.Map[String, NForward]()
+  val isas = scala.collection.mutable.Map[String, (Tycon, List[Ty])]()
   
   def allFull = fullnames ++ (if (parent != null) parent.fullnames else Map())
   def allNames = names ++ (if (parent != null) parent.names else Map())
  
+  def putIsa(child: Tycon, parents: List[Ty]) = isas.put(child.name, (child, parents))
+  
+  def getIsa(child: String) : Option[(Tycon, List[Ty])] = isas.get(child) match {
+    case x : Some[(Tycon, List[Ty])] => x
+    case None =>
+      if (parent != null) parent.getIsa(child)
+      else None
+  }
+  
   def putForward(name: String, node: NForward) = forwards.put(name, node)
 
   def getForward(name: String) : Option[NForward] = forwards.get(name) match {

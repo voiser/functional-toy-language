@@ -4,6 +4,8 @@ import scala.collection.JavaConverters._
 
 class TypeVisitor extends TypegrammarBaseVisitor[GTy] {
 
+  val restrictions = scala.collection.mutable.Map[String, List[GTy]]()
+  
   override def visitTy(ctx: TypegrammarParser.TyContext) = {
     if (ctx.simple != null) visitSimple(ctx.simple)
     else if (ctx.generic != null) visitGeneric(ctx.generic)
@@ -31,12 +33,28 @@ class TypeVisitor extends TypegrammarBaseVisitor[GTy] {
   
   override def visitVar(ctx: TypegrammarParser.VarContext) = {
     val name = ctx.VAR().getText
-    val restrictions = 
-      if (ctx.restriction != null) {
-        ctx.restriction.asScala.toList map { _.ID().getText }
+    val res = 
+      if (ctx.restriction.size() > 0) {
+        restrictions.get(name) match {
+          case None => 
+            val ret = ctx.restriction.asScala.toList map visitRestriction
+            restrictions.put(name, ret)
+            ret
+          case Some(x) => throw new TypegrammarException("Re-defining restrictions for type " + name)
+        }
       }
-      else List()
-    GTyvar(name, restrictions)
+      else {
+        restrictions.get(name) match {
+          case None => List[GTy]()
+          case Some(x) => x
+        }
+      }
+    GTyvar(name, res)
+  }
+  
+  override def visitRestriction(ctx: TypegrammarParser.RestrictionContext) = {
+    if (ctx.simple() != null) visitSimple(ctx.simple())
+    else visitGeneric(ctx.generic())
   }
 
   override def visitLeft(ctx: TypegrammarParser.LeftContext) = {
@@ -54,29 +72,25 @@ class TypegrammarException(cause: String) extends Exception(cause)
 
 object Typegrammar {
   
-  def toType(ty: GTy, env: Env) : Ty = ty match {
+  def toRestriction(ty: GTy) : Restriction = ty match {
+    case GTycon(name, params) => 
+      Isa(Tycon(name, params map toType))
+      
+    case _ =>
+      throw new TypegrammarException("Can't create restriction of " + ty)
+  }
+  
+  def toType(ty: GTy) : Ty = ty match {
     
     case GTyvar(name, restrictions) =>
-      Tyvar(name)
+      Tyvar(name, restrictions map toRestriction)
     
     case GTycon(name, params) =>
-      env.getType(name) match {
-        
-        case None => throw new TypegrammarException("Can't find type " + name + " in the environment")
-        
-        case Some(t) => t match {
-          case Tycon(n, tys, isa) => 
-            val tyvars = Typer3.tyvars(t)
-            val ts = TypeScheme(tyvars, t)
-            val typarams = params map { x => toType(x, env) }
-            ts.applyTo(typarams)
-            
-        }
-      }
+      Tycon(name, params map toType)
       
     case GTyfn(lefts, right) => 
-      val l = lefts.map { x => toType(x, env) }
-      val r = toType(right, env)
+      val l = lefts map toType
+      val r = toType(right)
       Tyfn(l, r)
       
     case _ =>
