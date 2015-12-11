@@ -30,13 +30,13 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   
   override def visitValue(ctx: GrammarParser.ValueContext) = {
     if (ctx.INTEGER != null) {
-      def raw = ctx.INTEGER.getText
-      def i = java.lang.Integer.parseInt(raw)
+      val raw = ctx.INTEGER.getText
+      val i = java.lang.Integer.parseInt(raw)
       fill(NInt(i), ctx)
     } 
     else if (ctx.FLOAT != null) {
-      def raw = ctx.FLOAT.getText
-      def f = java.lang.Float.parseFloat(raw)
+      val raw = ctx.FLOAT.getText
+      val f = java.lang.Float.parseFloat(raw)
       fill(NFloat(f), ctx)
     }
     else if (ctx.STRING != null) {
@@ -48,31 +48,37 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   }
 
   override def visitApply(ctx: GrammarParser.ApplyContext) = {
-    def fname = ctx.ID.getText
-    def params= ctx.expression().asScala.toList.map { visitExpression(_) }
+    val fname = ctx.ID.getText
+    val params= ctx.expression().asScala.toList.map { visitExpression(_) }
     fill(NApply(fname, params), ctx)
   }
   
+  override def visitObjapply(ctx: GrammarParser.ObjapplyContext) = {
+    val ref = visitRef(ctx.ref())
+    val apply = visitApply(ctx.apply())
+    fill(NObjApply(ref, apply), ctx)
+  }
+  
   override def visitDef(ctx: GrammarParser.DefContext) = {
-    def ident = ctx.ID.getText;
-    def expr = visitExpression(ctx.expression());
+    val ident = ctx.ID.getText;
+    val expr = visitExpression(ctx.expression());
     fill(NDef(ident, expr), ctx)
   }
   
   override def visitRef(ctx: GrammarParser.RefContext) = {
-    def ident = ctx.ID.getText
+    val ident = ctx.ID.getText
     fill(NRef(ident), ctx)
   }
   
   override def visitFnargpair(ctx: GrammarParser.FnargpairContext) = {
-    def ident = ctx.ID.getText
+    val ident = ctx.ID.getText
     if (ctx.CLASSID != null) fill(NFnArg(ident, KlassConst(ctx.CLASSID.getText)), ctx)
     else fill(NFnArg(ident, KlassVar("T")), ctx)
   }
   
   override def visitFn(ctx: GrammarParser.FnContext) = {
-    def expr = visitBlock(ctx.block())
-    def args = ctx.fnargpair()
+    val expr = visitBlock(ctx.block())
+    val args = ctx.fnargpair()
     if (args == null || args.size == 0) {
       fill(NFn(List(), expr), ctx)
     }
@@ -83,9 +89,9 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   }
   
   override def visitCond(ctx: GrammarParser.CondContext) = {
-    def cond = visitExpression(ctx.condition)
-    def exptrue = visitExpression(ctx.exptrue)
-    def expfalse = visitExpression(ctx.expfalse)
+    val cond = visitExpression(ctx.condition)
+    val exptrue = visitExpression(ctx.exptrue)
+    val expfalse = visitExpression(ctx.expfalse)
     fill(NIf(cond, exptrue, expfalse), ctx)
   }
   
@@ -100,7 +106,7 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   override def visitFile(ctx: GrammarParser.FileContext) = {
     val f = fill(NFn(List(), visitBlock(ctx.block())), ctx)
     val imports = ctx.imp().asScala.toList.map { x => 
-      val realname = x.IMPORT.getText
+      val realname = x.ID.asScala.toList.mkString(".")
       val alias = 
         if (x.alias != null) x.alias.getText
         else realname.split("\\.").last

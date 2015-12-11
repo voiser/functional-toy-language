@@ -21,6 +21,10 @@ class Transformer {
     dest
   }
   
+  def visitNModule(n: NModule): Node = {
+    NModule(n.name, n.imports, visit(n.main).asInstanceOf[NFn])
+  }
+  
   def visitNFn(n: NFn): Node = {
     val b = visit(n.value).asInstanceOf[NBlock]
     NFn(n.params, fill(n.value, b))
@@ -38,6 +42,10 @@ class Transformer {
   def visitNApply(n: NApply): Node = {
     val params = n.params.map { x => visit(x) }
     NApply(n.name, params)
+  }
+  
+  def visitNObjApply(n: NObjApply): Node = {
+    NObjApply(visit(n.callee), visit(n.apply).asInstanceOf[NApply])
   }
   
   def visitNIf(n: NIf): Node = {
@@ -59,6 +67,9 @@ class Transformer {
   def visit(n: Node) : Node = {
     n match {
       
+      case x : NModule =>
+        fill(n, visitNModule(x))
+      
       case x : NFn =>
         fill(n, visitNFn(x))
         
@@ -70,6 +81,9 @@ class Transformer {
         
       case x : NApply =>
         fill(n, visitNApply(x))
+        
+      case x : NObjApply =>
+        fill(n, visitNObjApply(x))
         
       case x : NIf =>
         fill(n, visitNIf(x))
@@ -114,6 +128,24 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
     } 
     else {
       super.visitNFn(n)
+    }
+  }
+}
+
+class ObjCallTransformer(module: NModule) extends Transformer {
+  
+  def apply() : NModule = {
+    visitNModule(module).asInstanceOf[NModule]
+  }
+  
+  override def visitNObjApply(n: NObjApply) = {
+    n.callee.ty match {
+      case Tycon(name, _) =>
+        val realfname = name + "." + n.apply.name
+        val x = NApply(realfname, n.callee :: n.apply.params)
+        println(n.apply.realName)
+        fill(n.apply, x)
+        x
     }
   }
 }

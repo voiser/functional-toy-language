@@ -65,6 +65,12 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitApply(GrammarParser.ApplyContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link GrammarParser#objapply}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitObjapply(GrammarParser.ObjapplyContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link GrammarParser#ref}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

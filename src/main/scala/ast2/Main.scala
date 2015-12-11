@@ -6,9 +6,9 @@ import scala.collection.JavaConverters._
 
 object Main {
 
-  def register(child: String, env: Env) : Ty = register(child, List(), env) 
+  def registerTy(fullname: String, child: String, env: Env) : Ty = registerTy(fullname, child, List(), env) 
   
-  def register(child: String, parents: List[String], env: Env) : Ty = {
+  def registerTy(fullname: String, child: String, parents: List[String], env: Env) : Ty = {
     def parentsOf(n: String) : List[String] = {
       val myparents = env.getIsa(n) match {
         case None => List()
@@ -24,6 +24,10 @@ object Main {
     val allparents = parents ++ (parents flatMap parentsOf)
     val ty = tycon(child)
     env.putType(ty.name, ty)
+    
+    val tyvars = Typer3.tyvars(ty)
+    val ts = TypeScheme(tyvars, ty)
+    env.put(ty.name, fullname, ts)
     isa(ty, allparents, env)
   }
   
@@ -39,7 +43,7 @@ object Main {
     ty
   }
   
-  def register(name: String, nativefn: String, ty: String, env: Env) : Ty = {
+  def registerFn(nativefn: String, name: String, ty: String, env: Env) : Ty = {
     val tyf = parseType(ty)
     val tyvars = Typer3.tyvars(tyf)
     val ts = TypeScheme(tyvars, tyf)
@@ -50,40 +54,41 @@ object Main {
   def rootEnv = {
     val env = Env()
 
-    register("Eq",   env)
-    register("Num", List("Eq"), env)
+    registerTy("runtime/Eq", "Eq",   env)
+    registerTy("runtime/Num", "Num", List("Eq"), env)
     
-    register("Bool", env)
-    register("Str",  List("Eq"), env)
-    register("Unit", env)
+    registerTy("runtime/Bool", "Bool", env)
+    registerTy("runtime/Str", "Str",  List("Eq"), env)
+    registerTy("runtime/Unit", "Unit", env)
     
-    register("Int",   List("Num"), env)
-    register("Float", List("Num"), env)
+    registerTy("runtime/Int", "Int",   List("Num"), env)
+    registerTy("runtime/Float", "Float", List("Num"), env)
 
-    register("id",    "runtime/id",    "a -> a",           env)
-    register("do",    "runtime/do_",   "(a -> b), a -> b", env) 
-    register("true",  "runtime/True",  "Bool",             env)
-    register("false", "runtime/False", "Bool",             env)
-    register("add",   "runtime/add",   "a+Num, a -> a",    env)
-    register("sub",   "runtime/sub",   "a+Num, a -> a",    env)
-    register("times", "runtime/times", "a+Num, a -> a",    env)
-    register("div",   "runtime/div",   "a+Num, a -> a",    env)
-    register("eq",    "runtime/eq_",   "a+Eq,  a -> Bool", env)
+    registerFn("runtime/id",    "id",    "a -> a",           env)
+    registerFn("runtime/do_",   "do",    "(a -> b), a -> b", env) 
+    registerFn("runtime/True",  "true",  "Bool",             env)
+    registerFn("runtime/False", "false", "Bool",             env)
+    registerFn("runtime/add",   "add",   "a+Num, a -> a",    env)
+    registerFn("runtime/sub",   "sub",   "a+Num, a -> a",    env)
+    registerFn("runtime/times", "times", "a+Num, a -> a",    env)
+    registerFn("runtime/div",   "div",   "a+Num, a -> a",    env)
+    registerFn("runtime/eq_",   "eq",    "a+Eq,  a -> Bool", env)
 
-    register("Set[a]", env)
-    register("size", "runtime/size", "a+Set[s] -> Int", env)
-    register("oneof", "runtime/oneof", "a+Set[s] -> s", env)
+    registerTy("runtime/Set", "Set[a]", env)
+    //registerFn("runtime/size",  "size",  "a+Set[s] -> Int", env)
+    registerFn("runtime/oneof", "oneof", "a+Set[s] -> s", env)
 
-    register("List[x]", List("Set[x]"), env)
-    register("list", "runtime/list_of", "a -> List[a]", env)
-    register("cons", "runtime/cons", "a, List[a] -> List[a]", env)
-    register("nil", "runtime/Nil", "List[a]", env)
+    registerTy("runtime/List", "List[x]", List("Set[x]"), env)
+    registerFn("runtime/List$size", "List$size", "List[x] -> Int", env)
+    registerFn("runtime/list_of", "list", "a -> List[a]", env)
+    registerFn("runtime/cons",    "cons", "a, List[a] -> List[a]", env)
+    registerFn("runtime/Nil",     "nil",  "List[a]", env)
     
-    register("Pair[l, r]", env)
+    registerTy("runtime/Pair", "Pair[l, r]", env)
     
-    register("Dict[k, v]", List("Set[Pair[k, v]]"), env)
-    register("dict", "runtime/dict_of", "a, b -> Dict[a, b]", env)
-    register("extend", "runtime/extend", "a, b, Dict[a, b] -> Dict[a, b]", env)
+    registerTy("runtime/Dict", "Dict[k, v]", List("Set[Pair[k, v]]"), env)
+    registerFn("runtime/dict_of", "dict",   "a, b -> Dict[a, b]", env)
+    registerFn("runtime/extend",  "extend", "a, b, Dict[a, b] -> Dict[a, b]", env)
     
     env
   }
@@ -106,20 +111,22 @@ object Main {
     case _ => throw new Exception("Type " + code + " is not a function type")
   } 
   
-  def process(filename: String, code: String) = {
-    
+  
+  /*
+   * Build the initial code representation
+   */
+  def stageZero(filename: String, code: String, env: Env) : NModule = {
     // Build the CST
     val lexer = new GrammarLexer(new ANTLRInputStream(code))
     val parser = new GrammarParser(new CommonTokenStream(lexer))
-    //parser.setTrace(true)
+    parser.setTrace(true)
     val cst = parser.file()
     
     // Build the AST
     val module = new FirstVisitor(filename).visitFile(cst)
     module.main.name = "main"
-
-    // Generate the root environment
-    val rootEnvironment = rootEnv 
+    
+    show(module.main, code)
     
     // Imports
     module.imports.foreach { case (realname, alias) => 
@@ -128,28 +135,45 @@ object Main {
       val functype = field.get(null).asInstanceOf[String]
       val parsed = parseType(functype)
       val tyvars = Typer3.tyvars(parsed)
-      rootEnvironment.put(alias, realname, TypeScheme(tyvars, parsed))
+      env.put(alias, realname, TypeScheme(tyvars, parsed))
     }
+
+    module
+  }
+  
+  
+  
+  def process(filename: String, code: String) = {
+    
+    // Generate the root environment
+    val env = rootEnv
+    
+    val module = stageZero(filename, code, env)
     
     // Type the AST
-    Typer3.getType(rootEnvironment, module.main)
+    module.main.fwdty = Tyfn(List(), Tyvar("a", List()))
+    Typer3.getType(env, module.main)
 
     // show(module.main, code)
+    
+    val module2 = new ObjCallTransformer(module).apply()
+    
+    // show(module2.main, code)
         
     // Name all named functions
     // new FunctionNamerVisitor(module)
-    new FunctionNamerVisitor2(null).visit(module.main)
+    new FunctionNamerVisitor2(null).visit(module2.main)
     
     // Name all anonymous functions
-    val anonFuncs = new AnonymousFunctionNamerVisitor(module).anonFuncs
+    val anonFuncs = new AnonymousFunctionNamerVisitor(module2).anonFuncs
     
     // make anonymous functions local
-    val module2 = new AnonymousFunction2LocalTransformer(module, anonFuncs.toList).apply()
+    val module3 = new AnonymousFunction2LocalTransformer(module2, anonFuncs.toList).apply()
     
-    // show(module2.main, code)
+    // show(module3.main, code)
     
     // Extract references to all functions
-    val funcs = new FunctionVisitor(module2).functions.toList
+    val funcs = new FunctionVisitor(module3).functions.toList
    
     // Extract references to all external symbols
     val externs = funcs.map { x => Extern(x.function, new ReferenceExtractor(x.function).externalFunctions.toList) }
@@ -157,7 +181,7 @@ object Main {
     // Extract references to all function calls 
     //val calls = funcs.map { x => Call(x.function, new CallExtractor(x.function).calls.toList) }
     
-    val unit = new CompilationUnit(filename, module2, funcs, externs)
+    val unit = new CompilationUnit(filename, module3, funcs, externs)
     
     unit
   }

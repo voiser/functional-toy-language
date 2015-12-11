@@ -5,7 +5,7 @@ import runtime.Int;
 import runtime.Thing;
 import runtime.add;
 
-public class Kk extends Func {
+public class Kk extends Func implements Runnable {
     
     public Kk() {
     	
@@ -16,8 +16,13 @@ public class Kk extends Func {
     }
     
     public static void main(String[] args) {
-    	Func kk1 = new Kk();
-    	Func kk2 = new Kk();
-    	((Kk)kk1).initialize(kk2);
+    	Runnable kk1 = new Kk();
+    	kk1.run();
+	}
+
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+		
 	} 
 }

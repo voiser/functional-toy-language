@@ -9,7 +9,7 @@ package ast2
  */
 
 /**
- * Traverses a systax tree, typing each expression and checking for correctness
+ * Traverses a syntax tree, typing each expression and checking for correctness
  */
 object Typer3 {
   
@@ -276,9 +276,8 @@ object Typer3 {
        * Find the referenced name's type in the env
        * unify t with it
        */
-      case a @ NRef(name) =>
-        val u = env.get(name)
-        u match {
+      case NRef(name) =>
+        env.get(name) match {
           case None => throw new TypeException("Can't find '" + name + "' in the environment", n, trace)
           case Some(typescheme) => unify(t, typescheme.newInstance(gen), s, n)
         }
@@ -317,19 +316,22 @@ object Typer3 {
                * Infer the function type by typing the function expression.
                * The forward and inferred types should be unifiable and equivalent (see #checkForward)
                */
-              case (Some(ts), ex @ NFn(params, _)) =>
+              case (Some(ts), ex2 @ NFn(params, _)) =>
                 val fwd = getForward(ex, env, name + "$$forward")
                 val newtrace = mktrace("The forward definition is " + fwd.ty.repr, fwd, trace)
-                if (ex.hasTypedArgs) throw new TypeException("Function " + name + " can't have typed arguments because it has a forward definition", ex.typedArgs(0), newtrace)
-                val forward = ts.newInstance(gen)
-                env.put(name, forward)
-                val s1 = tp(env, ex, t, s)
-                val computed = s1(t)
-                val s2 = unify(forward, computed, s1, n)(gen, newtrace)
-                checkForward(name, fwd.ty, s1(t), n, fwd, trace)
-                env.put(name, s2(t))
-                ex.ty = s2(t)
-                s2
+                if (ex2.hasTypedArgs) throw new TypeException("Function " + name + " can't have typed arguments because it has a forward definition", ex2.typedArgs(0), newtrace)
+                ts.newInstance(gen) match {
+                  case forward: Tyfn =>
+                    ex2.fwdty = forward
+                    env.put(name, forward)
+                    val s1 = tp(env, ex2, t, s)
+                    val computed = s1(t)
+                    val s2 = unify(forward, computed, s1, n)(gen, newtrace)
+                    checkForward(name, fwd.ty, s1(t), n, fwd, trace)
+                    env.put(name, s2(t))
+                    ex.ty = s2(t)
+                    s2
+                }
                 
               /*
                * There is a forward definition, and it's not a function
@@ -372,6 +374,22 @@ object Typer3 {
        *   env' ("y") = Int 
        */
       case x @ NFn(params, ex) =>
+        val ty = 
+          if (x.fwdty != null) x.fwdty
+          else Tyfn(params.map { _ => gen.get() }, gen.get())
+        if (params.length != ty.in.length) throw new TypeException("Incorrect arity", n, trace) 
+        val newtype = TypeScheme(tyvars(ty), ty).newInstance(gen)
+        newtype match {
+          case Tyfn(in, out) =>
+            val env1 = Env(env, n)
+            (params zip ty.in) map { x => env1.put(x._1.name, x._2) }
+            val s1 = unify(t, newtype, s, n)
+            val s2 = tp(env1, ex, out, s1)
+            (params zip ty.in) map { x => env1.put(x._1.name, s2(x._2)) }
+            s2
+        }
+        
+        /*
         def f(p: NFnArg) : Ty = {
           val n = p.name
           val t = p.klass
@@ -381,10 +399,11 @@ object Typer3 {
                 case None => throw new TypeException("No type " + name + " defined", x, trac("When typing a function body"))
                 case Some(tt) => tt
               }
-            case KlassVar(name) => gen.get() 
+            case KlassVar(name) => println("Klausen"); gen.get() 
           }
         }
         val a = params.map { x => f(x) }
+        println("My params are " + a)
         val b = gen.get()
         val s1 = unify(t, Tyfn(a, b), s, n) (gen, trac("When typing a function body"))
         val env1 = Env(env, n)
@@ -392,6 +411,9 @@ object Typer3 {
         val ret = tp(env1, ex, b, s1)
         (params zip a).foreach { x => env1.put(x._1.name, null, TypeScheme(List(), ret(x._2)))}
         ret
+        * 
+        */
+        
       
       /*
        * Function application
@@ -440,7 +462,34 @@ object Typer3 {
           case _ =>
             throw new TypeException("Too many candidates for '" + name + "'. This is a compiler bug", n, trac("When typing a function call"))
         }
-      
+        
+        
+      /*
+       * object-style calls
+       * 
+       * x.f(a, b, c) 
+       * 
+       * is typed like
+       * 
+       * apply("[type name of x].f", x, a, b, c)
+       */
+      case x @ NObjApply(z @ NRef(rname), y @ NApply(fname, params)) =>
+        val basetype = env.get(rname) match {
+          case None => throw new TypeException("Can't find '" + rname + "' in the environment", n, trace)
+          case Some(typescheme) => typescheme.tpe match {
+            case Tycon(tname, _) => tname 
+            case x @ _ => 
+              throw new TypeException("Can't make a object-style function call on " + x.repr, n, trac("When typing an object-style function call"))
+          }
+        }
+        val realfname = basetype + "$" + fname
+        val node = NApply(realfname, z :: params)
+        val s1 = tp(env, node, t, s)
+        y.realName = node.realName
+        y.isRecursive = node.isRecursive
+        s1
+        
+
       /*
        * 'If' expression
        * 

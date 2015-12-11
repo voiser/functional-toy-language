@@ -61,6 +61,7 @@ case class NFn(params: List[NFnArg], value: NBlock) extends Node {
     case x @ NFnArg(_, KlassConst(_)) => x 
   }
   def hasTypedArgs = typedArgs.length > 0
+  var fwdty : Tyfn = null
 }
 case class NApply(name: String, params: List[Node]) extends Node {
   // add(1, 1) ---> name = add, realname = add$a
@@ -68,6 +69,7 @@ case class NApply(name: String, params: List[Node]) extends Node {
   var realName: String = null
   var isRecursive: Boolean = false
 }
+case class NObjApply(callee: Node, apply: NApply) extends Node
 case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
 case class NForward(name: String, tydef: GTy) extends Node
 
@@ -246,7 +248,8 @@ class Env(var id: String, val parent: Env, val introducedBy: Node) {
   }
   
   def put(name: String, ty: Ty) {
-    names.put(name, TypeScheme(Typer3.tyvars(ty), ty))
+    val ts = TypeScheme(Typer3.tyvars(ty), ty)
+    names.put(name, ts)
     fullnames.put(name, null)
   }
 

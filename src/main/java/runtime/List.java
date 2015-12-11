@@ -23,4 +23,18 @@ public class List extends Thing {
 	public String toString() {
 		return "[" + repr() + "]";
 	}
+	
+	public static class size extends Func {
+		
+		@Override
+		public Thing apply1(Thing a) {
+			List l = (List)a;
+			int i = 0; // the last element is Nil
+			while (l.tail != null) {
+				l = l.tail;
+				i++;
+			}
+			return new Int(i);
+		}
+	}
 }

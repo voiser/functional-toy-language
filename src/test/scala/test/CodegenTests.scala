@@ -40,13 +40,11 @@ class CodegenTests extends FunSuite {
     ty
   }
 
-  /*
   test("Intermediate") { // manual test
     val code = """
-      factorial = { x -> if x == 2 then x else x * factorial(x - 1) }
-      factorial(4)
+      a = 1 + 1
+      a
       """
     println(intermediate(code))
   }
-  */
 }
