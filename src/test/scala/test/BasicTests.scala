@@ -210,4 +210,19 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert("5" == ret.toString())
   }
+
+  test("Typed function parameter errors") {
+    val code = """
+      f = { x Int->Int, y Int => x(y) }
+      f({x => "Hi"}, 3)
+    """
+    try {
+      run(code)
+    }
+    catch {
+      case e: TypeException =>
+        assert (e.getMessage().contains("Type mismatch: incompatible types Int and Str"))
+    }
+  }
+
 }

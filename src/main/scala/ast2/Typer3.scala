@@ -171,7 +171,25 @@ object Typer3 {
       case (_, _, a @ Tyvar(n1, r1), b @ Tyvar(n2, r2)) if (r1 == r2) =>
         if (n1 == n2) s
         else s.extend(a, b)
-        
+
+      case (_, _, a @ Tyvar(n1, r1), b @ Tyvar(n2, r2)) =>
+        if (r1.length != r2.length) exception("Restrictions do not match in " + a.repr + " and " + b.repr, n)
+        val pairs = r1 map { r =>
+          val cands = r match {
+            case x @ Isa(Tycon(name, _)) =>
+              r2.collect {
+                case y @ Isa(Tycon(name2, _)) if (name2 == name) => y
+              }
+          }
+          if (cands.length != 1) exception("Can't match restriction " + r.repr + ": " + cands.map{_.repr}, n)
+          (r, cands(0))
+        }
+        (s /: pairs) { (s, pair) =>
+          pair match {
+            case (Isa(x), Isa(y)) => unify(x, y, s, n)
+          }
+        }
+
       case _ => exception("Type mismatch: incompatible types " + s1.repr + " and " + s2.repr, n)
     }
   }
@@ -187,7 +205,8 @@ object Typer3 {
   }
 
   /**
-   * When a function has a forward definition, checks that the forward and its inferred types are equivalent
+   * When a function has a forward definition, checks that the forward and its inferred types are equivalent.
+   * Two types are equivalent iff (a) they have the same number of type variables and (b) they are unifiable
    * 
    * Suppose: 
    * 
@@ -202,21 +221,27 @@ object Typer3 {
    * definition is not valid (it's more general than the inferred). 
    * 
    */
-  def checkForward(fname: String, forward: Ty, computed: Ty, n: Node, nf: Node, trace: List[TraceElement]) = {
-    def regen(ty: Ty) = {
-      val gen = new TyvarGenerator("t")
-      (emptySubst /: tyvars(ty))((s, t) => s.extend(t, gen.get()))(ty)
-    }
-    val cleanf = regen(forward)
-    val cleanc = regen(computed)
-    val matches = (cleanf.repr == cleanc.repr)
-    if (!matches) {
-      val t1 = TraceElement("The computed definition is " + cleanc.repr, n)
-      val t2 = TraceElement("The forward definition is  " + cleanf.repr, nf)
-      exception("The forward definition of " + fname + " does not match", nf)(t1 :: t2 :: trace) 
+  def checkForward(fname: String, t1: Ty, t2: Ty, n: Node, nf: Node, trace: List[TraceElement]) = {
+    val v1 = Typer3.tyvars(t1)
+    val v2 = Typer3.tyvars(t2)
+    if (v1.length != v2.length) false
+    else {
+      try {
+        Typer3.unify(t1, t2, Typer3.emptySubst, null)(null, List())
+        true
+      }
+      catch {
+        case x: TypeException => false
+      }
     }
   }
-  
+
+  def basicType(name: String, env: Env, n: Node) (implicit gen: TyvarGenerator, trace: List[TraceElement]) =
+    env.get(name) match {
+      case Some(ts) => ts.newInstance(gen)
+      case None => exception("Failed to locate a basic type. This is a compiler bug.", n)
+    }
+
   /**
    * Finds the type of a syntax tree node. 
    * When traversing the AST, each node is assigned a new type variable. This method
@@ -257,15 +282,16 @@ object Typer3 {
         val ty = Typegrammar.toType(gty)
         env.put(name + "$$forward", ty)
         env.putForward(name + "$$forward", a)
-        unify(t, ty, s, n)(gen, trac("When typing forward definition"))
+        //unify(t, ty, s, n)(gen, trac("When typing forward definition"))
+        s
       
       /*
        * Basic expressions
        * Unify t with the corresponding base type
        */
-      case a : NInt => unify(t, intType, s, n)(gen, trac("When typing Int"))
-      case a : NFloat => unify(t, floatType, s, n)(gen, trac("When typing Float"))
-      case a : NString => unify(t, stringType, s, n)(gen, trac("When typing String"))
+      case a : NInt => unify(t, basicType("Int", env, n), s, n)(gen, trac("When typing Int"))
+      case a : NFloat => unify(t, basicType("Float", env, n), s, n)(gen, trac("When typing Float"))
+      case a : NString => unify(t, basicType("Str", env, n), s, n)(gen, trac("When typing String"))
       
       /*
        * Reference expression, like in 
@@ -318,19 +344,22 @@ object Typer3 {
                */
               case (Some(ts), ex2 @ NFn(params, _)) =>
                 val fwd = getForward(ex, env, name + "$$forward")
+                val fwdty = ts.tpe
                 val newtrace = mktrace("The forward definition is " + fwd.ty.repr, fwd, trace)
                 if (ex2.hasTypedArgs) throw new TypeException("Function " + name + " can't have typed arguments because it has a forward definition", ex2.typedArgs(0), newtrace)
-                ts.newInstance(gen) match {
+                fwdty match {
                   case forward: Tyfn =>
                     ex2.fwdty = forward
                     env.put(name, forward)
                     val s1 = tp(env, ex2, t, s)
                     val computed = s1(t)
-                    val s2 = unify(forward, computed, s1, n)(gen, newtrace)
-                    checkForward(name, fwd.ty, s1(t), n, fwd, trace)
-                    env.put(name, s2(t))
-                    ex.ty = s2(t)
-                    s2
+                    val valid = checkForward(name, forward, computed, n, fwd, trace)
+                    if (!valid) {
+                      val t1 = TraceElement("The computed definition is " + computed.repr, n)
+                      val t2 = TraceElement("The forward definition is  " + forward.repr, fwd)
+                      exception("The forward definition of " + name + " does not match", fwd)(t1 :: t2 :: trace)
+                    }
+                    s1
                 }
                 
               /*
@@ -349,7 +378,7 @@ object Typer3 {
                 val s1 = tp(env, ex, t, s)
                 val computed = s1(t)
                 val s2 = unify(forward, computed, s1, n)(gen, newtrace)
-                checkForward(name, fwd.ty, s1(t), n, fwd, trace)
+                checkForward(name, forward, computed, n, fwd, trace)
                 env.put(name, s2(t))
                 s2
             }
@@ -376,7 +405,16 @@ object Typer3 {
       case x @ NFn(params, ex) =>
         val newtype =
           if (x.fwdty != null) TypeScheme(tyvars(x.fwdty), x.fwdty).newInstance(gen).asInstanceOf[Tyfn]
-          else Tyfn(params.map { _ => gen.get() }, gen.get())
+          else {
+            val in = params.map { p =>
+              p.klass match {
+                case KlassConst(gty) => Typegrammar.toType(gty)
+                case KlassVar(_) => gen.get()
+              }
+            }
+            val out = gen.get()
+            Tyfn(in, out)
+          }
         if (params.length != newtype.in.length) throw new TypeException("Incorrect arity", n, trace)
         val env1 = Env(env, n)
         (params zip newtype.in) foreach { x => env1.put(x._1.name, null, TypeScheme(List(), x._2)) }

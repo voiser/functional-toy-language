@@ -64,27 +64,27 @@ case class CreateConstant(
     ty: CodegenType,
     node: Node)
     extends SingleCodegenStep {
-  def repr(d: Int) = margin(d) + "Constant " + name + " " + node + " " + ty
+  def repr(d: Int) = margin(d) + "CreateConstant " + name + " " + node + " " + ty
 }
 case class CreateCapture(
     name: String, 
     ty: CodegenType)
     extends SingleCodegenStep {
-  def repr(d: Int) = margin(d) + "Capture " + name + " " + ty
+  def repr(d: Int) = margin(d) + "CreateCapture " + name + " " + ty
 }
 case class CreateExtern(
     name: String, 
     fullname: String,
     ty: CodegenType)
     extends SingleCodegenStep {
-  def repr(d: Int) = margin(d) + "Extern " + name + " " + ty + " " + fullname
+  def repr(d: Int) = margin(d) + "CreateExtern " + name + " " + ty + " " + fullname
 }
 case class CreateLocal(
     name: String, 
     index: Int,
     ty: CodegenType)
     extends SingleCodegenStep {
-  def repr(d: Int) = margin(d) + "Local " + index + " " + name + " " + ty
+  def repr(d: Int) = margin(d) + "CreateLocal " + index + " " + name + " " + ty
 }
 abstract class CodegenMetadata extends CodegenStep
 case class MetadataType(

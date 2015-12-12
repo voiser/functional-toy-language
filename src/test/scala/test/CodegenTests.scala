@@ -40,14 +40,10 @@ class CodegenTests extends FunSuite {
     ty
   }
 
-  /*
   test("Intermediate") { // manual test
     val code = """
-      apply = { f -> { x -> f(x) } }
-      g = apply( { x -> add(x, 1) } )
-      g(1)
-             """
+      size = { x Int => x }
+      """
     println(intermediate(code))
   }
-  */
 }

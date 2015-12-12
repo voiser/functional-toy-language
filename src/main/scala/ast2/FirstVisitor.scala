@@ -20,7 +20,14 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     n.ctx = c
     n
   }
-  
+
+  def getTy(ty: GrammarParser.TydefContext) = {
+    val lexer = new TypegrammarLexer(new ANTLRInputStream(ty.getText))
+    val parser = new TypegrammarParser(new CommonTokenStream(lexer))
+    val cst = parser.ty()
+    new TypeVisitor().visitTy(cst)
+  }
+
   override def visitExpression(ctx: GrammarParser.ExpressionContext) = {
     if (ctx.exp != null)
       visitExpression(ctx.exp)
@@ -84,8 +91,10 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   
   override def visitFnargpair(ctx: GrammarParser.FnargpairContext) = {
     val ident = ctx.ID.getText
-    //if (ctx.CLASSID != null) fill(NFnArg(ident, KlassConst(ctx.CLASSID.getText)), ctx)
-    /*else*/ fill(NFnArg(ident, KlassVar("T")), ctx)
+    val r =
+      if (ctx.tydef() != null) NFnArg(ident, KlassConst(getTy(ctx.tydef())))
+      else NFnArg(ident, KlassVar("T"))
+    fill(r, ctx)
   }
   
   override def visitFn(ctx: GrammarParser.FnContext) = {
@@ -129,39 +138,9 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   
   override def visitForward(ctx: GrammarParser.ForwardContext) = {
     val name = ctx.ID().getText
-    val tydef = ctx.ty.getText
-    val lexer = new TypegrammarLexer(new ANTLRInputStream(tydef))
-    val parser = new TypegrammarParser(new CommonTokenStream(lexer))
-    val cst = parser.ty()
-    val gty = new TypeVisitor().visitTy(cst)
+    val gty = getTy(ctx.ty)
     fill(NForward(name, gty), ctx)
   }
-
-  /*
-  override def visitBinexp(ctx: GrammarParser.BinexpContext) = {
-    if (ctx.binary() != null) {
-      visitBinary(ctx.binary())
-    }
-    else visitChildren(ctx)
-  }
-  
-  override def visitBinary(ctx: GrammarParser.BinaryContext) = {
-    val left = 
-      if (ctx.xleft != null) visitBinexp(ctx.xleft)
-      else visitBinary(ctx.bleft)
-      
-    val right = visitBinexp(ctx.right)
-    val op = ctx.op.getText
-    val fname = op match {
-      case "+" => "add"
-      case "-" => "sub"
-      case "*" => "times"
-      case "/" => "div"
-      case "==" => "eq"
-    }
-    fill(NApply(fname, List(left, right)), ctx)
-  }
-  */
 
   override def visitList(ctx: GrammarParser.ListContext) = {
     val exprs = ctx.expression().asScala.toList    

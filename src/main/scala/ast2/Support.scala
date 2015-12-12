@@ -9,7 +9,7 @@ import org.antlr.v4.runtime.ParserRuleContext
  * { a Int -> ... } 'a' is NFnArg("a", KlassConst("Int"))  
  */
 abstract class KlassRef
-case class KlassConst(name: String) extends KlassRef
+case class KlassConst(ty: GTy) extends KlassRef
 case class KlassVar(name: String) extends KlassRef
 
 
