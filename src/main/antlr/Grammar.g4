@@ -1,84 +1,109 @@
 grammar Grammar;
 
-file  : 'module' name=ID imp* block
-      ;
-
-imp : 'import' ID ('.' ID)+ ('as' alias=ID)?
-       ;
-
-block : (expression | forward)+
-      ;
-
-expression : value
-           | fn
-           | def
-           | apply
-           | objapply
-           | ref
-           | cond
-           | '(' expression ')'
-           | list
-           | map
-           ;
-
-value : INTEGER 
-      | FLOAT 
-      | STRING
-      | value ('+' value)
-      ;
-
-fn : '{' block '}'
-   | '{' fnargpair (',' fnargpair)* '->' block '}'  
-   ;
-
-fnargpair : ID CLASSID?
-          ;
-
-def : ID '=' expression
+file
+    : 'module' name=ID imp* block
     ;
 
-apply : ID '(' ')'
-      | ID '(' expression ( ',' expression )* ')'
-      ;
-
-objapply : ref '.' apply
-         ;
-
-ref : ID ;
-
-cond : 'if' condition=expression 'then' exptrue=expression 'else' expfalse=expression
-     ;
-
-forward : ID ':' ty=tydef
-        ;
-
-tydef : CLASSID | ID ('+' tydef)* | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef | tydef ',' tydef  | '(' tydef ')'
-      ;
-
-binary : xleft=binexp op=BINOP right=binexp
-       | bleft=binary op=BINOP right=binexp
-       ;
-
-binexp : value 
-       | apply
-       | ref
-       | '(' binary ')'
-       ;
-
-list : '[' expression (',' expression)* ']'
-     ;
-
-map : '[' mappair (',' mappair)* ']'
+imp
+    : 'import' ID ('.' ID)+ ('as' alias=ID)?
     ;
 
-mappair : mapkey=expression ':' mapvalue=expression
-        ;
+block
+    : (expression | forward)+
+    ;
 
-ID : [a-z][a-zA-Z0-9_\-']* ;
-CLASSID : [A-Z][a-zA-Z]* ;
-INTEGER : [0-9]+ ;
-FLOAT : [0-9]* '.' [0-9]+ ;
-STRING : '"' ~["]* '"' ;
-BINOP : '+' | '-' | '*' | '/' | '==' ;
-WS : [ \t\r\n]+ -> skip ;
+expression
+    : value
+    | fn
+    | def
+    | apply
+    | objapply
+    | ref
+    | cond
+    | '(' exp=expression ')'
+    | list
+    | map
+    | left=expression binop='==' right=expression
+    | left=expression binop=('*' | '/') right=expression
+    | left=expression binop=('+' | '-') right=expression
+    ;
 
+value
+    : INTEGER
+    | FLOAT
+    | STRING
+    ;
+
+fn
+    : '{' block '}'
+    | '{' fnargpair (',' fnargpair)* '->' block '}'
+    ;
+
+fnargpair
+    : ID tydef?
+    ;
+
+def
+    : ID '=' expression
+    ;
+
+apply
+    : ID '(' ')'
+    | ID '(' expression ( ',' expression )* ')'
+    ;
+
+objapply
+    : ref '.' apply
+    ;
+
+ref
+    : ID
+    ;
+
+cond
+    : 'if' condition=expression 'then' exptrue=expression 'else' expfalse=expression
+    ;
+
+forward
+    : ID ':' ty=tydef
+    ;
+
+tydef
+    : CLASSID | ID ('+' tydef)* | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef | tydef ',' tydef  | '(' tydef ')'
+    ;
+
+list
+    : '[' expression (',' expression)* ']'
+    ;
+
+map
+    : '[' mappair (',' mappair)* ']'
+    ;
+
+mappair
+    : mapkey=expression ':' mapvalue=expression
+    ;
+
+ID
+    : [a-z][a-zA-Z0-9_\-']*
+    ;
+
+CLASSID
+    : [A-Z][a-zA-Z]*
+    ;
+
+INTEGER
+    : [0-9]+
+    ;
+
+FLOAT
+    : [0-9]* '.' [0-9]+
+    ;
+
+STRING
+    : '"' ~["]* '"'
+    ;
+
+WS
+    : [ \t\r\n]+ -> skip
+    ;

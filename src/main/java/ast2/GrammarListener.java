@@ -148,26 +148,6 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitTydef(GrammarParser.TydefContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link GrammarParser#binary}.
-	 * @param ctx the parse tree
-	 */
-	void enterBinary(GrammarParser.BinaryContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link GrammarParser#binary}.
-	 * @param ctx the parse tree
-	 */
-	void exitBinary(GrammarParser.BinaryContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link GrammarParser#binexp}.
-	 * @param ctx the parse tree
-	 */
-	void enterBinexp(GrammarParser.BinexpContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link GrammarParser#binexp}.
-	 * @param ctx the parse tree
-	 */
-	void exitBinexp(GrammarParser.BinexpContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link GrammarParser#list}.
 	 * @param ctx the parse tree
 	 */

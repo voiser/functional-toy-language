@@ -119,14 +119,14 @@ object Main {
     // Build the CST
     val lexer = new GrammarLexer(new ANTLRInputStream(code))
     val parser = new GrammarParser(new CommonTokenStream(lexer))
-    parser.setTrace(true)
+    // parser.setTrace(true)
     val cst = parser.file()
     
     // Build the AST
     val module = new FirstVisitor(filename).visitFile(cst)
     module.main.name = "main"
     
-    show(module.main, code)
+    // show(module.main, code)
     
     // Imports
     module.imports.foreach { case (realname, alias) => 

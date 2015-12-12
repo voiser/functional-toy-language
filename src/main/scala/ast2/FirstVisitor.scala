@@ -22,8 +22,20 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   }
   
   override def visitExpression(ctx: GrammarParser.ExpressionContext) = {
-    if (ctx.expression() != null) {
-      visitExpression(ctx.expression())
+    if (ctx.exp != null)
+      visitExpression(ctx.exp)
+    else if (ctx.binop != null) {
+      val left = visitExpression(ctx.left)
+      val right = visitExpression(ctx.right)
+      val op = ctx.binop.getText
+      val fname = op match {
+        case "+" => "add"
+        case "-" => "sub"
+        case "*" => "times"
+        case "/" => "div"
+        case "==" => "eq"
+      }
+      fill(NApply(fname, List(left, right)), ctx)
     }
     else visitChildren(ctx)
   }
@@ -72,8 +84,8 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   
   override def visitFnargpair(ctx: GrammarParser.FnargpairContext) = {
     val ident = ctx.ID.getText
-    if (ctx.CLASSID != null) fill(NFnArg(ident, KlassConst(ctx.CLASSID.getText)), ctx)
-    else fill(NFnArg(ident, KlassVar("T")), ctx)
+    //if (ctx.CLASSID != null) fill(NFnArg(ident, KlassConst(ctx.CLASSID.getText)), ctx)
+    /*else*/ fill(NFnArg(ident, KlassVar("T")), ctx)
   }
   
   override def visitFn(ctx: GrammarParser.FnContext) = {
@@ -124,7 +136,8 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     val gty = new TypeVisitor().visitTy(cst)
     fill(NForward(name, gty), ctx)
   }
-  
+
+  /*
   override def visitBinexp(ctx: GrammarParser.BinexpContext) = {
     if (ctx.binary() != null) {
       visitBinary(ctx.binary())
@@ -148,7 +161,8 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     }
     fill(NApply(fname, List(left, right)), ctx)
   }
-  
+  */
+
   override def visitList(ctx: GrammarParser.ListContext) = {
     val exprs = ctx.expression().asScala.toList    
     def cons(exprs: List[GrammarParser.ExpressionContext]) : Node = exprs match {

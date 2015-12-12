@@ -95,18 +95,6 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitTydef(GrammarParser.TydefContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link GrammarParser#binary}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitBinary(GrammarParser.BinaryContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link GrammarParser#binexp}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitBinexp(GrammarParser.BinexpContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link GrammarParser#list}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

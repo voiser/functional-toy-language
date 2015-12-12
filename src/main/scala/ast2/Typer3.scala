@@ -374,46 +374,17 @@ object Typer3 {
        *   env' ("y") = Int 
        */
       case x @ NFn(params, ex) =>
-        val ty = 
-          if (x.fwdty != null) x.fwdty
+        val newtype =
+          if (x.fwdty != null) TypeScheme(tyvars(x.fwdty), x.fwdty).newInstance(gen).asInstanceOf[Tyfn]
           else Tyfn(params.map { _ => gen.get() }, gen.get())
-        if (params.length != ty.in.length) throw new TypeException("Incorrect arity", n, trace) 
-        val newtype = TypeScheme(tyvars(ty), ty).newInstance(gen)
-        newtype match {
-          case Tyfn(in, out) =>
-            val env1 = Env(env, n)
-            (params zip ty.in) map { x => env1.put(x._1.name, x._2) }
-            val s1 = unify(t, newtype, s, n)
-            val s2 = tp(env1, ex, out, s1)
-            (params zip ty.in) map { x => env1.put(x._1.name, s2(x._2)) }
-            s2
-        }
-        
-        /*
-        def f(p: NFnArg) : Ty = {
-          val n = p.name
-          val t = p.klass
-          t match {
-            case KlassConst(name) => 
-              env.getType(name) match {
-                case None => throw new TypeException("No type " + name + " defined", x, trac("When typing a function body"))
-                case Some(tt) => tt
-              }
-            case KlassVar(name) => println("Klausen"); gen.get() 
-          }
-        }
-        val a = params.map { x => f(x) }
-        println("My params are " + a)
-        val b = gen.get()
-        val s1 = unify(t, Tyfn(a, b), s, n) (gen, trac("When typing a function body"))
+        if (params.length != newtype.in.length) throw new TypeException("Incorrect arity", n, trace)
         val env1 = Env(env, n)
-        (params zip a).foreach { x => env1.put(x._1.name, null, TypeScheme(List(), x._2))}
-        val ret = tp(env1, ex, b, s1)
-        (params zip a).foreach { x => env1.put(x._1.name, null, TypeScheme(List(), ret(x._2)))}
-        ret
-        * 
-        */
-        
+        (params zip newtype.in) foreach { x => env1.put(x._1.name, null, TypeScheme(List(), x._2)) }
+        val s1 = unify(t, newtype, s, n)
+        val s2 = tp(env1, ex, newtype.out, s1)
+        (params zip newtype.in) foreach { x => env1.put(x._1.name, null, TypeScheme(List(), s2(x._2))) }
+        s2
+
       
       /*
        * Function application
@@ -425,7 +396,8 @@ object Typer3 {
         def typ(n: String) (implicit trace: List[TraceElement]) = {
           val r = NRef(n)
           r.ctx = x.ctx
-          val s1 = tp(env, r, Tyfn(a, t), s)
+          val t2 = Tyfn(a, t)
+          val s1 = tp(env, r, t2, s)
           val s2 = (s1 /: (args zip a)) ((s2, arg) => tp(env, arg._1, arg._2, s2))
           s2
         }
