@@ -36,7 +36,7 @@ value
 
 fn
     : '{' block '}'
-    | '{' fnargpair (',' fnargpair)* '->' block '}'
+    | '{' fnargpair (',' fnargpair)* '=>' block '}'
     ;
 
 fnargpair

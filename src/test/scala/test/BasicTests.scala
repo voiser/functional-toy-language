@@ -43,7 +43,7 @@ class BasicTests extends FunSuite {
   test("Forward definition") {
     val code = """
       g : Int -> Int
-      g = { x -> g(x) }
+      g = { x => g(x) }
       g(1)
     """
     try {
@@ -57,7 +57,7 @@ class BasicTests extends FunSuite {
   
   test("Recursive call") {
     val code = """
-      f = { x -> if eq(x, 2) then x else times(x, f(sub(x, 1))) }
+      f = { x => if eq(x, 2) then x else times(x, f(sub(x, 1))) }
       f(4)
       """
     val ret = run(code)
@@ -67,8 +67,8 @@ class BasicTests extends FunSuite {
   test("Mutual recursion") {
     val code = """
       g : Int -> Int
-      f = { x -> if eq(x, 2) then x else times(x, g(sub(x, 1))) }
-      g = { x -> f(x) }
+      f = { x => if eq(x, 2) then x else times(x, g(sub(x, 1))) }
+      g = { x => f(x) }
       f(4)
       """
     val ret = run(code)
@@ -87,8 +87,8 @@ class BasicTests extends FunSuite {
   test("Mutual recursion with binary operations") {
     val code = """
       g : Int -> Int
-      f = { x -> if x == 2 then x else x * g(x - 1) }
-      g = { x -> f(x) }
+      f = { x => if x == 2 then x else x * g(x - 1) }
+      g = { x => f(x) }
       f(4)
       """
     val ret = run(code)
@@ -98,8 +98,8 @@ class BasicTests extends FunSuite {
   test("Generics and forward definitions") {
     val code = """
       g : a -> List[a]
-      f = { x -> g(x) }
-      g = { x -> list(x) }
+      f = { x => g(x) }
+      g = { x => list(x) }
       f(4)
       """
     val ret = run(code)
@@ -144,7 +144,7 @@ class BasicTests extends FunSuite {
   
   test("Typed params") {
     val code = """
-      f = { a Int, b Int -> a + b }
+      f = { a Int, b Int => a + b }
       f(1, 2)
       """
     val ret = run(code)
@@ -154,7 +154,7 @@ class BasicTests extends FunSuite {
   test("Typed params and forwards") {
     val code = """
       f : Int, Int -> Int
-      f = { a Int, b Int -> a + b }
+      f = { a Int, b Int => a + b }
       f(1, 2)
       """
     try {
@@ -168,7 +168,7 @@ class BasicTests extends FunSuite {
   
   test("Anonymous functions, captures") {
     val code = """
-      addcurried = { x -> { y -> add(x, y) } }
+      addcurried = { x => { y => add(x, y) } }
       addtwo = addcurried(2)
       addtwo(19) 
       """
@@ -178,8 +178,8 @@ class BasicTests extends FunSuite {
   
   test("Anonymous functions, captures 2") {
     val code = """
-      apply = { f -> { x -> f(x) } } 
-      equalsToOne = apply({x -> eq(1, x)})
+      apply = { f => { x => f(x) } }
+      equalsToOne = apply({x => eq(1, x)})
       equalsToOne(2)
       """
     val ret = run(code)
@@ -189,8 +189,8 @@ class BasicTests extends FunSuite {
   test("Hop captures") {
     val code = """
       a = 1
-      f = { x ->
-        g = { y -> add(y, a)}
+      f = { x =>
+        g = { y => add(y, a)}
         g(x)
       }
       g = {
@@ -200,5 +200,14 @@ class BasicTests extends FunSuite {
       """
     val ret = run(code)
     assert("17" == ret.toString())
+  }
+
+  test("Typed function parameter") {
+    val code = """
+      f = { x Int->Int, y Int => x(y) }
+      f({x => x + 2}, 3)
+    """
+    val ret = run(code)
+    assert("5" == ret.toString())
   }
 }
