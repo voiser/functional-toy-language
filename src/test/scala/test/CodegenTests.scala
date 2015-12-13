@@ -40,10 +40,12 @@ class CodegenTests extends FunSuite {
     ty
   }
 
+  /*
   test("Intermediate") { // manual test
     val code = """
       size = { x Int => x }
       """
     println(intermediate(code))
   }
+  */
 }
