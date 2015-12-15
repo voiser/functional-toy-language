@@ -7,6 +7,10 @@ import org.antlr.v4.runtime.ParserRuleContext
  * @author david
  */
 
+/**
+ * An empty visitor. Override the appropriate functions to visit a kind
+ * of nodes and/or control recursion 
+ */
 class Visitor {
   
   def visitNFn(n: NFn) {
@@ -31,6 +35,9 @@ class Visitor {
   }
   
   def visitNRefAnon(n: NRefAnon) {
+  }
+  
+  def visitFunctionDefinition(n: NDef, f: NFn) {
   }
 
   def visit(n: NFn): Unit = {
@@ -72,9 +79,17 @@ class Visitor {
   def visit(n: NRefAnon): Unit = {
     visitNRefAnon(n)
   }
+  
+  def visit(n: NDef, f: NFn): Unit = {
+    visitFunctionDefinition(n, f)
+    visit(n)
+  }
 
   def visit(n: Node) : Unit = {
     n match {
+      
+      case x @ NDef(name, y : NFn) =>
+        visit(x, y)
       
       case x : NFn =>
         visit(x)
@@ -99,42 +114,58 @@ class Visitor {
         
       case x : NRefAnon =>
         visit(x)
-      
+        
       case _ =>    
     }
   }
 }
 
+
+/**
+ * Sets a name to all functions
+ */
 class FunctionNamerVisitor2(name: String) extends Visitor {
+  
+  override def visit(n: NDef, x: NFn) {
+    val newName = if (name != null) name + "$" + n.name else n.name
+    x.name = newName
+    x.defname = n.name
+    new FunctionNamerVisitor2(newName).visit(n.value)
+  }
   
   override def visit(n: NDef) {
     val newName = if (name != null) name + "$" + n.name else n.name
-    n.value match {
-      case x: NFn =>
-        x.name = newName
-        x.defname = n.name
-      case _ => 
-    }
     new FunctionNamerVisitor2(newName).visit(n.value)
   }
 }
 
+
+/**
+ * Gives a generated name to all anonymous functions
+ */
 class AnonymousFunctionNamerVisitor(module: NModule) extends Visitor {
   
   val anonFuncs = scala.collection.mutable.ArrayBuffer[NFn]()
   var i = 0
-  visit(module.main)
+  visit(module.main.value)
+  
+  override def visit(n: NDef, x: NFn) {
+    visit(x.value)
+  }
   
   override def visitNFn(n: NFn) {
-    if (n.name == null) {
-      val newName = n.env.repr + "$_" + i
-      n.name = newName
-      n.defname = newName
-      anonFuncs += n
-    }
+    val newName = n.env.repr + "$_" + i
+    n.name = newName
+    n.defname = newName
+    anonFuncs += n
   }
 }
 
+
+/**
+ * Accumulates a reference to each symbols defined in a parent environment.
+ * Basically, it locates captured symbols
+ */
 class FetchRefsVisitor(root: NFn) extends Visitor {
 
   val captured = scala.collection.mutable.ArrayBuffer[NodeRef]()  //val intro = scala.collection.mutable.ArrayBuffer[NRef]()
@@ -183,7 +214,7 @@ class FetchRefsVisitor(root: NFn) extends Visitor {
 }
 
 
-/*
+/**
  * Extracts all functions in a module, listing all references in each function
  */
 class FunctionVisitor(module: NModule) extends Visitor {
@@ -193,12 +224,16 @@ class FunctionVisitor(module: NModule) extends Visitor {
   
   override def visitNFn(n: NFn) {
     val v = new FetchRefsVisitor(n)
-    val r = Function(n, v.captures.toList) //, v.recursive.toList))
+    val r = Function(n, v.captures.toList)
     functions += r
     super.visitNFn(n)
   }
 }
 
+
+/**
+ * Extracts all external symbols
+ */
 class ReferenceExtractor(root: Node) extends Visitor {
   
   val externalFunctions = scala.collection.mutable.Set[String]()
@@ -216,6 +251,9 @@ class ReferenceExtractor(root: Node) extends Visitor {
 }
 
 
+/**
+ * Extract all function names
+ */
 class CallExtractor(root: NFn) extends Visitor {
   
   val calls = scala.collection.mutable.Set[String]()

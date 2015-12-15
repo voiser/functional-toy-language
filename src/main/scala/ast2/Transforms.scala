@@ -1,5 +1,9 @@
 package ast2
 
+/**
+ * A visitor that returns a node for each visited one.
+ * Meant to be used as a basis to a tree transformation.
+ */
 class Transformer {
   
   def fill[T<:Node](origin: T, dest: T): T = {
@@ -103,6 +107,17 @@ class Transformer {
 }
 
 
+/**
+ * Transforms an anonymous function into a local one.
+ * 
+ * a = { ... { blah } ... }
+ * 
+ * is transformed to:
+ * 
+ * envxx$_x = { blah }
+ * a = { ... NRefAnon(envxx$_x) ... }
+ * 
+ */
 class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) extends Transformer {
  
   val anonNames = anons.map { x => x.name }
@@ -119,9 +134,7 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
   }
   
   override def visitNFn(n: NFn) : Node = {
-    //println("Visiting a function with name " + n.name)
     if (anonNames.contains(n.name)) {
-      //println("  This is an anonymous function!")
       val x = NRefAnon(n.name)
       fill(n, x)
       x
@@ -132,6 +145,16 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
   }
 }
 
+
+/**
+ * Transforms object-style calls
+ * 
+ * a.method(p1, p2)
+ * 
+ * into
+ * 
+ * ClassName.method(a, p1, p2)
+ */
 class ObjCallTransformer(module: NModule) extends Transformer {
   
   def apply() : NModule = {
