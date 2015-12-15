@@ -225,7 +225,7 @@ object Main {
     
     // Extract references to all functions
     val funcs = new FunctionVisitor(module3).functions.toList
-   
+    
     // Extract references to all external symbols
     val externs = funcs.map { x => Extern(x.function, new ReferenceExtractor(x.function).externalFunctions.toList) }
     

@@ -254,7 +254,7 @@ object Intermediate {
         val destname = unit.module.name + "/" + v.name
         val local = flocal(name, allLocals)
         Instantiate(destname, local)
-      case a @ NDefAnon(name, _) if (a.env.parent == function.root.value.env) =>
+      case a @ NDefAnon(name, _) /* if (a.env.parent == function.root.value.env) */=>
         val destname = unit.module.name + "/" + name
         val local = flocal(name, allLocals)
         Instantiate(destname, local)
@@ -266,7 +266,7 @@ object Intermediate {
    
     val initializations = function.root.value.children.collect {
       case NDef(name, v: NFn) => createInitialize(unit, function, allLocals, captures, name, v.name)
-      case a @ NDefAnon(name, _) if (a.env.parent == function.root.value.env) => createInitialize(unit, function, allLocals, captures, name, name)
+      case a @ NDefAnon(name, _) /* if (a.env.parent == function.root.value.env) */ => createInitialize(unit, function, allLocals, captures, name, name)
       case x @ NRefAnon(name) => createInitialize(unit, function, allLocals, captures, name, name)
     }
     val code = function.root.value.children.map { x =>
@@ -353,7 +353,10 @@ object Intermediate {
         case _ => 
           externs.find(_.name == x.name) match {
             case Some(CreateExtern(name, ty, fullname)) => Extern(x.name)
-            case None => Constant(x.name)
+            case None => captures.find(_.name == x.name) match {
+              case Some(CreateCapture(name, ty)) => Capture(name)
+              case None => Constant(x.name)
+            }
           }
       }
       

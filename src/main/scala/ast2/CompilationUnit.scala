@@ -17,7 +17,7 @@ class CompilationUnitFunction(
     val params: List[(String, Node, Int)], 
     val locals: List[(String, Node, Int)], 
     val externs: List[(String, Ty)],
-    val captures: List[NRef]
+    val captures: List[NodeRef]
 )
 
 /**
@@ -77,7 +77,7 @@ class CompilationUnit(
               localmap.put(name, l)
               (name, v, l)
           }
-        case a @ NDefAnon(name, v) if (a.env.parent == root.value.env) =>
+        case a @ NDefAnon(name, v) /*if (a.env.parent == root.value.env)*/ =>
           l = l + 1
           localmap.put(name, l)
           (name, v, l)

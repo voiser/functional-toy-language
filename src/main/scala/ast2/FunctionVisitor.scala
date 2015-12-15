@@ -29,6 +29,9 @@ class Visitor {
   
   def visitNRef(n: NRef) {
   }
+  
+  def visitNRefAnon(n: NRefAnon) {
+  }
 
   def visit(n: NFn): Unit = {
     visitNFn(n)
@@ -65,6 +68,10 @@ class Visitor {
   def visit(n: NRef): Unit = {
     visitNRef(n)
   }
+  
+  def visit(n: NRefAnon): Unit = {
+    visitNRefAnon(n)
+  }
 
   def visit(n: Node) : Unit = {
     n match {
@@ -89,6 +96,9 @@ class Visitor {
         
       case x : NRef =>
         visit(x)
+        
+      case x : NRefAnon =>
+        visit(x)
       
       case _ =>    
     }
@@ -99,10 +109,8 @@ class FunctionNamerVisitor2(name: String) extends Visitor {
   
   override def visit(n: NDef) {
     val newName = if (name != null) name + "$" + n.name else n.name
-    //println ("Hi, I'm FNV2 on def " + n.name)
     n.value match {
       case x: NFn =>
-        //println ("Naming function " + x + " with name " + newName)
         x.name = newName
         x.defname = n.name
       case _ => 
@@ -119,12 +127,9 @@ class AnonymousFunctionNamerVisitor(module: NModule) extends Visitor {
   
   override def visitNFn(n: NFn) {
     if (n.name == null) {
-      //println("I have an anon function: " + n)
-      //println("It is defined in " + n.env)
       val newName = n.env.repr + "$_" + i
       n.name = newName
       n.defname = newName
-      //println ("Naming function " + n + " with name " + newName)
       anonFuncs += n
     }
   }
@@ -132,11 +137,11 @@ class AnonymousFunctionNamerVisitor(module: NModule) extends Visitor {
 
 class FetchRefsVisitor(root: NFn) extends Visitor {
 
-  val captured = scala.collection.mutable.ArrayBuffer[NRef]()  //val intro = scala.collection.mutable.ArrayBuffer[NRef]()
+  val captured = scala.collection.mutable.ArrayBuffer[NodeRef]()  //val intro = scala.collection.mutable.ArrayBuffer[NRef]()
 
   val myvars = root.value.children.collect {
-    case NDef(name, v) =>
-      NRef(name)
+    case NDef(name, v) => NRef(name)
+    case NDefAnon(name, v) => NRefAnon(name)
   }
   visit(root.value)
   
@@ -145,43 +150,32 @@ class FetchRefsVisitor(root: NFn) extends Visitor {
   override def visitNRef(n: NRef) {
     val e1 = n.env
     val e2 = n.env.locate(n.name)
-    //println("  I have a ref to " + n.name + " in " + e1.repr + " which was introduced in " + e2.repr)
     if (e1.isChildOf(e2) && (e2.parent != null)) {
-      //println ("  " + root.defname + " " + n.name)
       if (root.defname == n.name) {
-        //println ("  This is a recursive reference")
-        //recursive += n
         n.isRecursive = true
       }
       else {
-        //println ("  This is a captured variable")
         captured += n
       }
     }
-    //else {
-      //println ("  This is *not* a captured variable")
-      //intro += n
-    //}
+  }
+  
+  override def visitNRefAnon(n: NRefAnon) {
+    captured += n
   }
   
   override def visitNApply(n: NApply) {
     val e1 = n.env
     val e2 = n.env.locate(n.name)
-    //println("  I have a ref (apply) to " + n.name + " in " + e1.repr + " which was introduced in " + e2.repr) 
     if (e1.isChildOf(e2) && (e2.parent != null)) {
-      //println ("  " + root.defname + " " + n.name)
       val r = NRef(n.name)
       r.env = e1
       r.ctx = n.ctx
-      //println("----- I'm looking for the type of " + n.name + " in environment " + e1)
       r.ty = e1.get(n.name).get.tpe
       if (root.defname == n.name) {
-        //println ("  This is a recursive call")
-        //recursive += r
         n.isRecursive = true
       }
       else {
-        //println ("  This is a captured variable")
         captured += r
       }
     }
@@ -198,11 +192,8 @@ class FunctionVisitor(module: NModule) extends Visitor {
   visit(module.main)
   
   override def visitNFn(n: NFn) {
-    //println("Oh I found a function! Is it a closure?")
-    //println("  This function introduces environment " + n.env.repr)
     val v = new FetchRefsVisitor(n)
     val r = Function(n, v.captures.toList) //, v.recursive.toList))
-    //println("Function " + n.name + " has these captures: " + r.captures)
     functions += r
     super.visitNFn(n)
   }

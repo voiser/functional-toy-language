@@ -41,17 +41,18 @@ abstract class Node {
   def column = if (ctx == null) 0 else ctx.start.getCharPositionInLine
   def charsize = if (ctx == null) 0 else ctx.getText.length() + 1
 }
+abstract class NodeRef(val name: String) extends Node {
+  var isRecursive: Boolean = false
+}
 case class NModule(name: String, imports: List[(String, String)], main: NFn) extends Node
 case class NBlock(children: List[Node]) extends Node
 case class NInt(i: Int) extends Node
 case class NFloat(f: Float) extends Node
 case class NString(s: String) extends Node
 case class NDef(name: String, value: Node) extends Node
-case class NRef(name: String) extends Node {
-  var isRecursive: Boolean = false
-}
+case class NRef(override val name: String) extends NodeRef(name)
 case class NDefAnon(name: String, value: Node) extends Node
-case class NRefAnon(name: String) extends Node 
+case class NRefAnon(override val name: String) extends NodeRef(name)
 case class NFnArg(name: String, klass: KlassRef) extends Node
 case class NFn(params: List[NFnArg], value: NBlock) extends Node {
   // def f = {...} ---> name = envx$f, defname = f
@@ -175,7 +176,7 @@ case class TypeScheme(tyvars: List[Tyvar], tpe: Ty) {
 /**
  * Utility classes for code analysis
  */
-case class Function(function: NFn, captures: List[NRef]) {
+case class Function(function: NFn, captures: List[NodeRef]) {
   override def toString() = "Function(" + function.defname + ", " + captures + ")"
 }
 

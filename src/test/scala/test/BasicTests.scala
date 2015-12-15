@@ -242,4 +242,20 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert("[OK KO]" == ret.toString())
   }
+
+  test("Continuations with anonymous functions") {
+    val code = """
+      divide = { ifok, ifko, n, d => 
+        if d == 0 then ifko()
+        else ifok(n / d)
+      }
+      
+      divide1 = { n, d => divide({ x => "OK" }, { "KO" }, n, d) }
+
+      [ divide1(10, 2), divide1(10, 0) ]
+      """
+    val ret = run(code)
+    assert("[OK KO]" == ret.toString())
+  }
+
 }
