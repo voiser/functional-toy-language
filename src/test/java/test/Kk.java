@@ -3,26 +3,16 @@ package test;
 import runtime.Func;
 import runtime.Int;
 import runtime.Thing;
-import runtime.add;
 
-public class Kk extends Func implements Runnable {
-    
-    public Kk() {
-    	
-	}
-    
-    public void initialize (Thing other) {
-    	
-    }
-    
-    public static void main(String[] args) {
-    	Runnable kk1 = new Kk();
-    	kk1.run();
-	}
+public class Kk extends Func {
 
+	private Func divide;
+	private Func ifok;
+	private Func ifko;
+	
 	@Override
-	public void run() {
-		// TODO Auto-generated method stub
-		
-	} 
+	public Thing apply0() {
+		return divide.apply3(ifok, ifko, new Int(189887));
+	}
+
 }

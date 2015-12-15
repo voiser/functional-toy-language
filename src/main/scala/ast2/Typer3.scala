@@ -58,7 +58,8 @@ object Typer3 {
         else apply(v)
         
       case x @ Tyvar(name, res) =>
-        lookup(x) match {
+        val z = lookup(x) 
+        z match {
           case Tyvar(name2, res) =>
             Tyvar(name2, res map apply)
           case x => x 
@@ -417,12 +418,17 @@ object Typer3 {
           }
         if (params.length != newtype.in.length) throw new TypeException("Incorrect arity", n, trace)
         val env1 = Env(env, n)
-        (params zip newtype.in) foreach { x => env1.put(x._1.name, null, TypeScheme(List(), x._2)) }
+        (params zip newtype.in) foreach { x => 
+          env1.put(x._1.name, null, TypeScheme(List(), x._2)) 
+        }
         val s1 = unify(t, newtype, s, n)
         val s2 = tp(env1, ex, newtype.out, s1)
-        (params zip newtype.in) foreach { x => env1.put(x._1.name, null, TypeScheme(List(), s2(x._2))) }
-        s2
-
+        val env2 = Env(env, n)
+        (params zip newtype.in) foreach { x => 
+          env2.put(x._1.name, null, TypeScheme(List(), s2(x._2))) 
+        }
+        val s3 = tp(env2, ex, newtype.out, s2)
+        s3
       
       /*
        * Function application

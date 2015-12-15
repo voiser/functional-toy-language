@@ -6,8 +6,22 @@ import scala.collection.JavaConverters._
 
 object Main {
 
+  /*
+   * Registers a type in an environment
+   * This is a convenient alias for registering types without parents:
+   *
+   * registerTy("runtime/Eq", "Eq", env)
+   */
   def registerTy(fullname: String, child: String, env: Env) : Ty = registerTy(fullname, child, List(), env) 
-  
+
+
+  /*
+   * Registers a type in an environment
+   * 
+   * registerTy("runtime/Int", "Int", List("Num"), env)
+   *
+   * This method looks for all parent types
+   */
   def registerTy(fullname: String, child: String, parents: List[String], env: Env) : Ty = {
     def parentsOf(n: String) : List[String] = {
       val myparents = env.getIsa(n) match {
@@ -30,7 +44,14 @@ object Main {
     env.put(ty.name, fullname, ts)
     isa(ty, allparents, env)
   }
-  
+
+
+  /*
+   * Registers a IS-A restriction in an environment
+   *
+   * val int = Tycon("Int", ...)
+   * isa(int, List("Num", "Eq"), env)
+   */
   def isa(ty: Tycon, parents: List[String], env: Env) = {
     val ps = parents map tycon
     val res = ps.map { p => 
@@ -42,7 +63,13 @@ object Main {
     env.putIsa(ty, res)
     ty
   }
-  
+
+
+  /*
+   * Registers a native function in an environment
+   * 
+   * registerFn("runtime/add", "add", "a+Num, a -> a", env)
+   */
   def registerFn(nativefn: String, name: String, ty: String, env: Env) : Ty = {
     val tyf = parseType(ty)
     val tyvars = Typer3.tyvars(tyf)
@@ -50,7 +77,11 @@ object Main {
     env.put(name, nativefn, ts)
     tyf
   }
-  
+
+
+  /*
+   * Creates the root environment which contains the most basic types and functions
+   */
   def rootEnv = {
     val env = Env()
 
@@ -93,6 +124,12 @@ object Main {
     env
   }
 
+
+  /*
+   * Parses a type definition
+   *
+   * parseType("Int -> Int")
+   */
   def parseType(code: String) = {
     val lexer = new TypegrammarLexer(new ANTLRInputStream(code))
     val parser = new TypegrammarParser(new CommonTokenStream(lexer))
@@ -100,12 +137,24 @@ object Main {
     val gty = new TypeVisitor().visitTy(cst)
     Typegrammar.toType(gty)
   }
-  
+ 
+
+  /*
+   * Parses a type constant definition
+   *
+   * tycon("Int")
+   */
   def tycon(code: String) : Tycon = parseType(code) match {
     case x : Tycon => x
     case _ => throw new Exception("Type " + code + " is not a type constant")
   }
-  
+ 
+
+  /*
+   * Parses a function type definition
+   * 
+   * tyfn("Int -> Int")
+   */
   def tyfn(code: String) : Tyfn = parseType(code) match {
     case x : Tyfn => x
     case _ => throw new Exception("Type " + code + " is not a function type")
@@ -142,7 +191,9 @@ object Main {
   }
   
   
-  
+  /*
+   * Parses, types and transforms a source file into a CompilationUnit
+   */
   def process(filename: String, code: String) = {
     
     // Generate the root environment
@@ -186,18 +237,29 @@ object Main {
     unit
   }
 
+
+  /*
+   * Executes a module
+   */
   def execute(module: String, bytes: List[(String, String, Array[Byte])]) = {
-	  val runtime = new Runtime()
+    val runtime = new Runtime()
     bytes.foreach { x =>
       runtime.register(x._1, x._2, x._3)
     }
     runtime.apply0(module + ".main") 
   }
   
+
+  /*
+   *
+   */
   def main(args: Array[String]) {
 
   }
-  
+ 
+  /*
+   * Utility methods to show the typed parse tree
+   */
   def show(n: Node, code: String) {
     val codelines = code.split("\n")
     

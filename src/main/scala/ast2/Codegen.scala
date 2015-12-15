@@ -191,6 +191,7 @@ object Codegen {
       mv.visitVarInsn(ALOAD, 0)
       stack.push
       mv.visitVarInsn(ALOAD, i)
+      i = i + 1
       stack.push
       val javaty = jsuperclass(capture.ty)
       val ty = superclass(capture.ty)
@@ -272,7 +273,8 @@ object Codegen {
         stack.push
         mv.visitInsn(DUP);
         stack.push
-        mv.visitIntInsn(SIPUSH, v);
+        mv.visitLdcInsn(new Integer(v));
+        //mv.visitIntInsn(SIPUSH, v);
         stack.push
         mv.visitMethodInsn(INVOKESPECIAL, "runtime/Int", "<init>", "(I)V", false);
         stack.pop
@@ -489,12 +491,14 @@ object Codegen {
     
     val nExports = module.exportedFunctions.length
     
-    mv.visitIntInsn(SIPUSH, nExports);
+    //mv.visitIntInsn(SIPUSH, nExports);
+    mv.visitLdcInsn(new Integer(nExports));
     mv.visitTypeInsn(ANEWARRAY, "runtime/Export");
     
     ((0 to nExports-1) zip module.exportedFunctions).foreach { case (i, x) => 
       mv.visitInsn(DUP);
-      mv.visitIntInsn(SIPUSH, i);
+      mv.visitLdcInsn(new Integer(i));
+      //mv.visitIntInsn(SIPUSH, i);
       mv.visitTypeInsn(NEW, "runtime/Export");
       mv.visitInsn(DUP);
       mv.visitLdcInsn(x.name);

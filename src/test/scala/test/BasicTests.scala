@@ -224,5 +224,22 @@ class BasicTests extends FunSuite {
         assert (e.getMessage().contains("Type mismatch: incompatible types Int and Str"))
     }
   }
+  
+  test("Continuations") {
+    val code = """
+      divide = { ifok, ifko, n, d => 
+        if d == 0 then ifko()
+        else ifok(n / d)
+      }
+      
+      ifok = { x => "OK" }
+      ifko = { "KO" }
 
+      divide1 = { n, d => divide(ifok, ifko, n, d) }
+
+      [ divide1(10, 2), divide1(10, 0) ]
+      """
+    val ret = run(code)
+    assert("[OK KO]" == ret.toString())
+  }
 }
