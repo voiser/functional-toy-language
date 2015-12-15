@@ -160,7 +160,6 @@ object Main {
     case _ => throw new Exception("Type " + code + " is not a function type")
   } 
   
-  
   /*
    * Build the initial code representation
    */
@@ -192,48 +191,71 @@ object Main {
   
   
   /*
+   * Type the AST
+   */
+  class stageType(env: Env) extends Function1[NModule, NModule] {
+    def apply(module: NModule) = {
+      module.main.fwdty = Tyfn(List(), Tyvar("a", List()))
+      Typer3.getType(env, module.main)
+      // show(module.main, code)
+      module
+    }
+  }
+
+  
+  /*
+   * Convert object-style calls
+   */
+  class stageObjectStyle(env: Env) extends Function1[NModule, NModule] {
+    def apply(module: NModule) = {
+      val ret = new ObjCallTransformer(module).apply()
+      // show(ret.main, code)
+      ret
+    }
+  }
+  
+  
+  /*
+   * Performs some transformations on functions
+   */
+  class stageTransformFunctions(env: Env) extends Function1[NModule, NModule] {
+    def apply(module: NModule) = {
+      // Name all named functions
+      new FunctionNamerVisitor2(null).visit(module.main)
+      // Name all anonymous functions
+      val anonFuncs = new AnonymousFunctionNamerVisitor(module).anonFuncs
+      // make anonymous functions local
+      val ret = new AnonymousFunction2LocalTransformer(module, anonFuncs.toList).apply()
+      // show(module3.main, code)
+      ret
+    }
+  }
+  
+  
+  /*
+   * Generates a CompilationUnit 
+   */
+  def stageGenerateUnit(filename: String, module: NModule) = {
+    // Extract references to all functions
+    val funcs = new FunctionVisitor(module).functions.toList
+    // Extract references to all external symbols
+    val externs = funcs.map { x => Extern(x.function, new ReferenceExtractor(x.function).externalFunctions.toList) }
+    new CompilationUnit(filename, module, funcs, externs)
+  }
+  
+  
+  /*
    * Parses, types and transforms a source file into a CompilationUnit
    */
   def process(filename: String, code: String) = {
-    
-    // Generate the root environment
     val env = rootEnv
-    
-    val module = stageZero(filename, code, env)
-    
-    // Type the AST
-    module.main.fwdty = Tyfn(List(), Tyvar("a", List()))
-    Typer3.getType(env, module.main)
-
-    // show(module.main, code)
-    
-    val module2 = new ObjCallTransformer(module).apply()
-    
-    // show(module2.main, code)
-        
-    // Name all named functions
-    // new FunctionNamerVisitor(module)
-    new FunctionNamerVisitor2(null).visit(module2.main)
-    
-    // Name all anonymous functions
-    val anonFuncs = new AnonymousFunctionNamerVisitor(module2).anonFuncs
-    
-    // make anonymous functions local
-    val module3 = new AnonymousFunction2LocalTransformer(module2, anonFuncs.toList).apply()
-    
-    // show(module3.main, code)
-    
-    // Extract references to all functions
-    val funcs = new FunctionVisitor(module3).functions.toList
-    
-    // Extract references to all external symbols
-    val externs = funcs.map { x => Extern(x.function, new ReferenceExtractor(x.function).externalFunctions.toList) }
-    
-    // Extract references to all function calls 
-    //val calls = funcs.map { x => Call(x.function, new CallExtractor(x.function).calls.toList) }
-    
-    val unit = new CompilationUnit(filename, module3, funcs, externs)
-    
+    val stages = List(
+        new stageType(env), 
+        new stageObjectStyle(env), 
+        new stageTransformFunctions(env))
+    val module0 = stageZero(filename, code, env)
+    val module = stages.foldLeft(module0) { (module, stage) => stage(module) }
+    val unit = stageGenerateUnit(filename, module)
     unit
   }
 
