@@ -12,7 +12,7 @@ object Main {
    *
    * registerTy("runtime/Eq", "Eq", env)
    */
-  def registerTy(fullname: String, child: String, env: Env) : Ty = registerTy(fullname, child, List(), env) 
+  def registerTy(fullname: String, child: String)(implicit env: Env) : Ty = registerTy(fullname, child, List()) 
 
 
   /*
@@ -22,7 +22,7 @@ object Main {
    *
    * This method looks for all parent types
    */
-  def registerTy(fullname: String, child: String, parents: List[String], env: Env) : Ty = {
+  def registerTy(fullname: String, child: String, parents: List[String])(implicit env: Env) : Ty = {
     def parentsOf(n: String) : List[String] = {
       val myparents = env.getIsa(n) match {
         case None => List()
@@ -42,7 +42,7 @@ object Main {
     val tyvars = Typer3.tyvars(ty)
     val ts = TypeScheme(tyvars, ty)
     env.put(ty.name, fullname, ts)
-    isa(ty, allparents, env)
+    isa(ty, allparents)
   }
 
 
@@ -52,7 +52,7 @@ object Main {
    * val int = Tycon("Int", ...)
    * isa(int, List("Num", "Eq"), env)
    */
-  def isa(ty: Tycon, parents: List[String], env: Env) = {
+  def isa(ty: Tycon, parents: List[String])(implicit env: Env) = {
     val ps = parents map tycon
     val res = ps.map { p => 
       env.getType(p.name) match {
@@ -70,7 +70,7 @@ object Main {
    * 
    * registerFn("runtime/add", "add", "a+Num, a -> a", env)
    */
-  def registerFn(nativefn: String, name: String, ty: String, env: Env) : Ty = {
+  def registerFn(nativefn: String, name: String, ty: String)(implicit env: Env) : Ty = {
     val tyf = parseType(ty)
     val tyvars = Typer3.tyvars(tyf)
     val ts = TypeScheme(tyvars, tyf)
@@ -83,43 +83,37 @@ object Main {
    * Creates the root environment which contains the most basic types and functions
    */
   def rootEnv = {
-    val env = Env()
+    implicit val env = Env()
 
-    registerTy("runtime/Eq", "Eq",   env)
-    registerTy("runtime/Num", "Num", List("Eq"), env)
+    registerTy("runtime/Unit",      "Unit")
+    registerTy("runtime/Eq",        "Eq")
+    registerTy("runtime/Set",       "Set[a]")
+    registerTy("runtime/Pair",      "Pair[l, r]")
     
-    registerTy("runtime/Bool", "Bool", env)
-    registerTy("runtime/Str", "Str",  List("Eq"), env)
-    registerTy("runtime/Unit", "Unit", env)
-    
-    registerTy("runtime/Int", "Int",   List("Num"), env)
-    registerTy("runtime/Float", "Float", List("Num"), env)
+    registerTy("runtime/Num",       "Num",        List("Eq"))
+    registerTy("runtime/Str",       "Str",        List("Eq"))
+    registerTy("runtime/Bool",      "Bool",       List("Eq"))
+    registerTy("runtime/Int",       "Int",        List("Num"))
+    registerTy("runtime/Float",     "Float",      List("Num"))
+    registerTy("runtime/List",      "List[x]",    List("Set[x]"))
+    registerTy("runtime/Dict",      "Dict[k, v]", List("Set[Pair[k, v]]"))
 
-    registerFn("runtime/id",    "id",    "a -> a",           env)
-    registerFn("runtime/do_",   "do",    "(a -> b), a -> b", env) 
-    registerFn("runtime/True",  "true",  "Bool",             env)
-    registerFn("runtime/False", "false", "Bool",             env)
-    registerFn("runtime/add",   "add",   "a+Num, a -> a",    env)
-    registerFn("runtime/sub",   "sub",   "a+Num, a -> a",    env)
-    registerFn("runtime/times", "times", "a+Num, a -> a",    env)
-    registerFn("runtime/div",   "div",   "a+Num, a -> a",    env)
-    registerFn("runtime/eq_",   "eq",    "a+Eq,  a -> Bool", env)
-
-    registerTy("runtime/Set", "Set[a]", env)
-    //registerFn("runtime/size",  "size",  "a+Set[s] -> Int", env)
-    registerFn("runtime/oneof", "oneof", "a+Set[s] -> s", env)
-
-    registerTy("runtime/List", "List[x]", List("Set[x]"), env)
-    registerFn("runtime/List$size", "List$size", "List[x] -> Int", env)
-    registerFn("runtime/list_of", "list", "a -> List[a]", env)
-    registerFn("runtime/cons",    "cons", "a, List[a] -> List[a]", env)
-    registerFn("runtime/Nil",     "nil",  "List[a]", env)
-    
-    registerTy("runtime/Pair", "Pair[l, r]", env)
-    
-    registerTy("runtime/Dict", "Dict[k, v]", List("Set[Pair[k, v]]"), env)
-    registerFn("runtime/dict_of", "dict",   "a, b -> Dict[a, b]", env)
-    registerFn("runtime/extend",  "extend", "a, b, Dict[a, b] -> Dict[a, b]", env)
+    registerFn("runtime/id",        "id",         "a -> a")
+    registerFn("runtime/do_",       "do",         "(a -> b), a -> b") 
+    registerFn("runtime/True",      "true",       "Bool")
+    registerFn("runtime/False",     "false",      "Bool")
+    registerFn("runtime/add",       "add",        "a+Num, a -> a")
+    registerFn("runtime/sub",       "sub",        "a+Num, a -> a")
+    registerFn("runtime/times",     "times",      "a+Num, a -> a")
+    registerFn("runtime/div",       "div",        "a+Num, a -> a")
+    registerFn("runtime/eq_",       "eq",         "a+Eq,  a -> Bool")
+    registerFn("runtime/oneof",     "oneof",      "a+Set[s] -> s")
+    registerFn("runtime/List$size", "List$size",  "List[x] -> Int")
+    registerFn("runtime/list_of",   "list",       "a -> List[a]")
+    registerFn("runtime/cons",      "cons",       "a, List[a] -> List[a]")
+    registerFn("runtime/Nil",       "nil",        "List[a]")
+    registerFn("runtime/dict_of",   "dict",       "a, b -> Dict[a, b]")
+    registerFn("runtime/extend",    "extend",     "a, b, Dict[a, b] -> Dict[a, b]")
     
     env
   }

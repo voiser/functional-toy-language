@@ -41,5 +41,15 @@ class EqTests extends FunSuite {
       """
     val ret = run(code)
     assert ("[False True]" == ret.toString())
+
   }
+
+  test("Bool as Eq") {
+    val code = """
+      cons(eq(true, false), cons(eq(true, true), nil))
+      """
+    val ret = run(code)
+    assert ("[False True]" == ret.toString())
+  }
+
 }
