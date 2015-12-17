@@ -39,6 +39,9 @@ class Visitor {
   
   def visitFunctionDefinition(n: NDef, f: NFn) {
   }
+  
+  def visitAlias(n: NDef, r: NRef) {
+  }
 
   def visit(n: NFn): Unit = {
     visitNFn(n)
@@ -84,11 +87,19 @@ class Visitor {
     visitFunctionDefinition(n, f)
     visit(n)
   }
+  
+  def visit(n: NDef, r: NRef): Unit = {
+    visitAlias(n, r)
+    visit(n)
+  }
 
   def visit(n: Node) : Unit = {
     n match {
       
       case x @ NDef(name, y : NFn) =>
+        visit(x, y)
+        
+      case x @ NDef(name, y : NRef) =>
         visit(x, y)
       
       case x : NFn =>
@@ -232,26 +243,6 @@ class FunctionVisitor(module: NModule) extends Visitor {
 
 
 /**
- * Extracts all external symbols
- */
-class ReferenceExtractor(root: Node) extends Visitor {
-  
-  val externalFunctions = scala.collection.mutable.Set[String]()
-  visit(root)
-  
-  override def visitNApply(n: NApply) {
-    val fullname = n.env.getFull(n.realName)
-    if (fullname != null) externalFunctions += n.realName
-  }
-  
-  override def visitNRef(n: NRef) {
-    val fullname = n.env.getFull(n.name)
-    if (fullname != null) externalFunctions += n.name
-  }
-}
-
-
-/**
  * Extract all function names
  */
 class CallExtractor(root: NFn) extends Visitor {
@@ -267,4 +258,86 @@ class CallExtractor(root: NFn) extends Visitor {
     }
   }
 }
+
+
+class OverVisitor(root: NFn) extends Visitor {
+
+  val functions = scala.collection.mutable.Set[Over]()
+  
+  val pending = scala.collection.mutable.Map[String, (NRef, List[Over])]()
+  
+  visit(root.value)
+  
+  def externs = functions.toList
+  
+  /**
+   * 
+   */
+  def lookupOverride(myType: Ty, name: String, n: Node, overrides: List[Over]) = {
+    val candidates = overrides.map { over =>
+      try {
+        Typer3.unify(myType, over.ts.tpe, Typer3.emptySubst, n)(new TyvarGenerator("z"), List())
+        over
+      }
+      catch {
+        case e:TypeException => null
+      }
+    }.filterNot { x => x == null }
+    
+    if (candidates.size == 0) None
+    else if (candidates.size == 1)
+      Some(candidates(0))
+    else {
+      val msg = "Too many candidates for '" + name + 
+        "' : " + candidates.map{x => x.fullname + " of type " + x.ts.tpe.repr}.mkString("    ")
+      throw new TypeException(msg, n, List())
+    }
+  }
+  
+  override def visit(n: NDef, r: NRef): Unit = {
+    pending.put(n.name, (r, n.env.getOverrides(r.name)))
+  }
+  
+  override def visitNRef(r: NRef) {
+    r.env.getOverrides(r.name) match {
+      case List() => // it's a local reference
+      case List(x) => 
+        functions += x
+        r.over = Some(x)
+      case _ => throw new TypeException("Too many overrides in " + r, r, List())
+    }
+  }
+  
+  override def visitNApply(n: NApply) {
+    lookupOverride(n.resolvedType, n.name, n, n.env.getOverrides(n.name)) match {
+      case Some(o) => 
+        functions += o
+        n.over = Some(o)
+        
+      case None => 
+        pending.get(n.name) match {
+          case Some((ref, overs)) =>
+            lookupOverride(n.resolvedType, ref.name, n, ref.env.getOverrides(ref.name)) match {
+              case Some(o) => 
+                functions += o
+                functions += o
+                n.over = Some(o)
+                
+              case None => // the function references a local function
+            }
+          case None => // the function is local
+        }
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
 

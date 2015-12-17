@@ -237,6 +237,9 @@ object Typer3 {
     }
   }
 
+  /**
+   * 
+   */
   def basicType(name: String, env: Env, n: Node) (implicit gen: TyvarGenerator, trace: List[TraceElement]) =
     env.get(name) match {
       case Some(ts) => ts.newInstance(gen)
@@ -418,14 +421,16 @@ object Typer3 {
           }
         if (params.length != newtype.in.length) throw new TypeException("Incorrect arity", n, trace)
         val env1 = Env(env, n)
-        (params zip newtype.in) foreach { x => 
-          env1.put(x._1.name, null, TypeScheme(List(), x._2)) 
+        (params zip newtype.in) foreach { x =>
+          val ts = TypeScheme(List(), x._2)
+          env1.put(x._1.name, ts)
         }
         val s1 = unify(t, newtype, s, n)
         val s2 = tp(env1, ex, newtype.out, s1)
         val env2 = Env(env, n)
         (params zip newtype.in) foreach { x => 
-          env2.put(x._1.name, null, TypeScheme(List(), s2(x._2))) 
+          val ts = TypeScheme(List(), s2(x._2))
+          env2.put(x._1.name, ts)
         }
         val s3 = tp(env2, ex, newtype.out, s2)
         s3
@@ -436,16 +441,16 @@ object Typer3 {
        */
       case x @ NApply(name, args) => 
         val a = args.map { x => gen.get() }
+        val t2 = Tyfn(a, t)
         val candidates = env.get2(name).map { _._1}.sortBy { x => x.length }
         def typ(n: String) (implicit trace: List[TraceElement]) = {
           val r = NRef(n)
           r.ctx = x.ctx
-          val t2 = Tyfn(a, t)
           val s1 = tp(env, r, t2, s)
           val s2 = (s1 /: (args zip a)) ((s2, arg) => tp(env, arg._1, arg._2, s2))
           s2
         }
-        candidates match {
+        val res = candidates match {
           
           /*
            * The function is not defined
@@ -475,10 +480,14 @@ object Typer3 {
           case List(a, b) if (b == a + "$$forward") =>
             x.realName = a
             typ(a)
+            
           case _ =>
             throw new TypeException("Too many candidates for '" + name + "'. This is a compiler bug", n, trac("When typing a function call"))
         }
-        
+        x.resolvedType = res(t2) match {
+          case x : Tyfn => x
+        }
+        res
         
       /*
        * object-style calls

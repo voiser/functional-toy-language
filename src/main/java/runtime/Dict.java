@@ -38,4 +38,12 @@ public class Dict extends Thing {
 	public String toString() {
 		return "[" + repr() + "]";
 	}
+	
+	public static class size extends Func {
+		@Override
+		public Thing apply1(Thing a) {
+			Dict d = (Dict)a;
+			return new Int(d.map.size());
+		}
+	}
 }

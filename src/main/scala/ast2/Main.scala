@@ -37,11 +37,12 @@ object Main {
     
     val allparents = parents ++ (parents flatMap parentsOf)
     val ty = tycon(child)
-    env.putType(ty.name, ty)
+    //env.putType(ty.name, ty)
     
     val tyvars = Typer3.tyvars(ty)
     val ts = TypeScheme(tyvars, ty)
-    env.put(ty.name, fullname, ts)
+    env.put(ty.name, ts)
+    env.putType(ty.name, fullname, ty)
     isa(ty, allparents)
   }
 
@@ -56,7 +57,7 @@ object Main {
     val ps = parents map tycon
     val res = ps.map { p => 
       env.getType(p.name) match {
-        case Some(Tycon(name, params)) => p
+        case Some(Type(_, Tycon(name, params))) => p
         case _ => throw new Exception("Can't find type " + p + " in the environment.")
       }
     }
@@ -74,10 +75,25 @@ object Main {
     val tyf = parseType(ty)
     val tyvars = Typer3.tyvars(tyf)
     val ts = TypeScheme(tyvars, tyf)
-    env.put(name, nativefn, ts)
+    env.put(name, ts)
+    env.putOverride(name, nativefn, ts)
     tyf
   }
 
+  def registerFn(name: String, ty: String)(implicit env: Env) : Ty = {
+    val tyf = parseType(ty)
+    val tyvars = Typer3.tyvars(tyf)
+    val ts = TypeScheme(tyvars, tyf)
+    env.put(name, ts)
+    tyf
+  }
+  
+  def registerOverride(nativefn: String, name: String, ty: String)(implicit env: Env) = {
+    val t = parseType(ty)
+    val ts = TypeScheme(Typer3.tyvars(t), t)
+    env.putOverride(name, nativefn, ts)
+    t
+  }
 
   /*
    * Creates the root environment which contains the most basic types and functions
@@ -114,6 +130,10 @@ object Main {
     registerFn("runtime/Nil",       "nil",        "List[a]")
     registerFn("runtime/dict_of",   "dict",       "a, b -> Dict[a, b]")
     registerFn("runtime/extend",    "extend",     "a, b, Dict[a, b] -> Dict[a, b]")
+    
+    registerFn("size", "a+Set[b] -> Int")
+    registerOverride("runtime/List$size", "size", "List[x] -> Int")
+    registerOverride("runtime/Dict$size", "size", "Dict[a, b] -> Int")
     
     env
   }
@@ -177,7 +197,8 @@ object Main {
       val functype = field.get(null).asInstanceOf[String]
       val parsed = parseType(functype)
       val tyvars = Typer3.tyvars(parsed)
-      env.put(alias, realname, TypeScheme(tyvars, parsed))
+      env.put(alias, TypeScheme(tyvars, parsed))
+      env.putOverride(alias, realname, TypeScheme(tyvars, parsed))
     }
 
     module
@@ -187,11 +208,11 @@ object Main {
   /*
    * Type the AST
    */
-  class stageType(env: Env) extends Function1[NModule, NModule] {
+  class stageType(env: Env, code: String) extends Function1[NModule, NModule] {
     def apply(module: NModule) = {
       module.main.fwdty = Tyfn(List(), Tyvar("a", List()))
       Typer3.getType(env, module.main)
-      // show(module.main, code)
+      //show(module.main, code)
       module
     }
   }
@@ -212,7 +233,7 @@ object Main {
   /*
    * Performs some transformations on functions
    */
-  class stageTransformFunctions(env: Env) extends Function1[NModule, NModule] {
+  class stageTransformFunctions(env: Env, code: String) extends Function1[NModule, NModule] {
     def apply(module: NModule) = {
       // Name all named functions
       new FunctionNamerVisitor2(null).visit(module.main)
@@ -220,7 +241,7 @@ object Main {
       val anonFuncs = new AnonymousFunctionNamerVisitor(module).anonFuncs
       // make anonymous functions local
       val ret = new AnonymousFunction2LocalTransformer(module, anonFuncs.toList).apply()
-      // show(module3.main, code)
+      //show(module.main, code)
       ret
     }
   }
@@ -229,11 +250,11 @@ object Main {
   /*
    * Generates a CompilationUnit 
    */
-  def stageGenerateUnit(filename: String, module: NModule) = {
+  def stageGenerateUnit(filename: String, module: NModule): CompilationUnit = {
     // Extract references to all functions
     val funcs = new FunctionVisitor(module).functions.toList
     // Extract references to all external symbols
-    val externs = funcs.map { x => Extern(x.function, new ReferenceExtractor(x.function).externalFunctions.toList) }
+    val externs = funcs.map { f => Extern(f.function, new OverVisitor(f.function).externs) }
     new CompilationUnit(filename, module, funcs, externs)
   }
   
@@ -244,9 +265,9 @@ object Main {
   def process(filename: String, code: String) = {
     val env = rootEnv
     val stages = List(
-        new stageType(env), 
+        new stageType(env, code),
         new stageObjectStyle(env), 
-        new stageTransformFunctions(env))
+        new stageTransformFunctions(env, code))
     val module0 = stageZero(filename, code, env)
     val module = stages.foldLeft(module0) { (module, stage) => stage(module) }
     val unit = stageGenerateUnit(filename, module)
@@ -328,7 +349,7 @@ object Main {
   def showLine(codelines: Array[String], message: String, node: Node) = {
     println("At " + node.filename + ":" + node.line + " - " + message)
     println(codelines(node.line - 1))
-    println(" " * node.column + "^" * node.charsize) 
+    println(" " * node.column + "^") 
   }
   
   def showException(e: TypeException, code: String) = {

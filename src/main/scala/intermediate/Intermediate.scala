@@ -238,15 +238,19 @@ object Intermediate {
     }
     Initialize(destname, local, params)
   }
-    
+  
+  def sym(symbol: String) = symbol.split("/").last 
+ 
   def genfunction(unit: CompilationUnit, function: CompilationUnitFunction) = {
     val name = function.name
     val arity = function.root.params.length
     val constants = function.constants.map { x => CreateConstant(x._1, codegenType(x._2.ty), x._2) }
     val captures = function.captures.map { x => CreateCapture(x.name, codegenType(x.ty)) }
-    val externs = function.externs.map { x => CreateExtern(x._1, function.root.env.getFull(x._1).replace(".", "/"), codegenType(x._2)) }
+    val externs = function.externs.map { x =>
+      val (node, name, symbol, ty) = x
+      CreateExtern(sym(symbol), symbol, codegenType(ty))
+    }
     val locals = function.locals.map { x => CreateLocal(x._1, x._3, codegenType(x._2.ty)) }
-
     val allLocals = (function.locals ++ function.params).distinct
     
     val instantiations = function.root.value.children.collect { 
@@ -309,36 +313,35 @@ object Intermediate {
       StoreLocal(local, name, translate(unit, function, allLocals, externs, captures, v))
           
     case x @ NRef(name) =>
-      val local = findlocal(name, allLocals) 
-      local match {
-        case Some((name, _, i)) => Local(i)
-        case None => 
-          externs.find(_.name == x.name) match {
-            case Some(CreateExtern(name, ty, fullname)) => Extern(x.name)
-            case None => 
-              captures.find(_.name == x.name) match {
-                case Some(CreateCapture(name, ty)) => Capture(name)
-                case None => Constant(x.name)
-              }
+      x.over match {
+        case None =>
+          findlocal(name, allLocals) match {
+            case Some((name, _, i)) => Local(i)
+            case None => captures.find(_.name == x.name) match {
+              case Some(CreateCapture(name, ty)) => Capture(name)
+              case None => Constant(name)
+            } 
           }
+          
+        case Some(o) => Extern(sym(o.fullname))
       }
       
-     case NInt(v) => SInt(v)
-     case NFloat(f) => SFloat(f)
-     case NString(s) => SString(s)
+    case NInt(v) => SInt(v)
+    case NFloat(f) => SFloat(f)
+    case NString(s) => SString(s)
 
-     case x @ NApply(fname, args) =>
-       val realname = x.realName
-       val params = args.map { x => translate(unit, function, allLocals, externs, captures, x) }
-       val local = findlocal(realname, allLocals)
-       local match {
-        case Some((name, _, i)) => CallLocal(i, realname, params)
-        case _ => 
-          externs.find(_.name == realname) match {
-            case Some(CreateExtern(name, ty, fullname)) => CallExtern(name, params)
-            case None => CallConstant(realname, params)
+    case x @ NApply(fname, args) =>
+      val params = args.map { x => translate(unit, function, allLocals, externs, captures, x) }       
+      x.over match {
+        case None =>
+          findlocal(fname, allLocals) match {
+           case Some((name, _, i)) => CallLocal(i, fname, params)
+           case _ => CallConstant(fname, params)
           }
-       }
+        
+        case Some(o) =>
+          CallExtern(sym(o.fullname), params)
+      }
        
     case x @ NIf(cond, extrue, exfalse) =>
       val c = translate(unit, function, allLocals, externs, captures, cond)

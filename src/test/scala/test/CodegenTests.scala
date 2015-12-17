@@ -43,15 +43,7 @@ class CodegenTests extends FunSuite {
   /*
   test("Intermediate") { // manual test
     val code = """
-
-      divide = { ifok, ifko, n, d => 
-        if d == 0 then ifko()
-        else ifok(n / d)
-      }
-      
-      divide1 = { n, d => divide({ x => "OK" }, { "KO" }, n, d) }
-      
-      [ divide1(10, 2), divide1(10, 0) ]
+      addcurried = { x => { y => add(x, y) } }
       """
     println(intermediate(code))
   }

@@ -16,7 +16,7 @@ class CompilationUnitFunction(
     val constants: List[(String, Node)], 
     val params: List[(String, Node, Int)], 
     val locals: List[(String, Node, Int)], 
-    val externs: List[(String, Ty)],
+    val externs: List[(Node, String, String, Ty)],
     val captures: List[NodeRef]
 )
 
@@ -93,10 +93,12 @@ class CompilationUnit(
       }
       val locals = locals0.filter(_ != null)
       
-      val exts: List[(String, Ty)] = externs.find { x => x.function.name == root.name } match {
-        case Some(Extern(node, names)) =>
-          names.map { name => (name, node.env.get(name).get.tpe) }   
+      val myexterns = externs.find { x => x.function.name == root.name }
+      
+      val exts : List[(Node, String, String, Ty)] = myexterns match {
         case None => List()
+        case Some(Extern(node, overrides)) =>
+          overrides.map { over => (node, over.name, over.fullname, over.ts.tpe) }
       }
       
       new CompilationUnitFunction(this, root, name, className, slashedName, constants, params, locals, exts, captures)

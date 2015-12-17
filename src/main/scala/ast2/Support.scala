@@ -50,7 +50,9 @@ case class NInt(i: Int) extends Node
 case class NFloat(f: Float) extends Node
 case class NString(s: String) extends Node
 case class NDef(name: String, value: Node) extends Node
-case class NRef(override val name: String) extends NodeRef(name)
+case class NRef(override val name: String) extends NodeRef(name) {
+  var over: Option[Over] = None
+}
 case class NDefAnon(name: String, value: Node) extends Node
 case class NRefAnon(override val name: String) extends NodeRef(name)
 case class NFnArg(name: String, klass: KlassRef) extends Node
@@ -69,6 +71,9 @@ case class NApply(name: String, params: List[Node]) extends Node {
   // def f = {...} ; f(x)   ---> name = realname = f
   var realName: String = null
   var isRecursive: Boolean = false
+  
+  var resolvedType : Tyfn = null
+  var over: Option[Over] = None
 }
 case class NObjApply(callee: Node, apply: NApply) extends Node
 case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
@@ -182,10 +187,15 @@ case class Function(function: NFn, captures: List[NodeRef]) {
 
 case class Call(function: NFn, calls: List[String])
 
-case class Extern(function: NFn, symbols: List[String]) {
+case class Extern(function: NFn, symbols: List[Over]) {
   override def toString() = "Extern(" + function.defname + ", " + symbols + ")"
 }
 
+
+case class Type(fullname: String, ty: Tycon)
+case class Over(name: String, fullname: String, ts: TypeScheme) {
+  override def toString() = "Over(" + fullname + " : " + ts.tpe.repr + ")"
+}
 
 /**
  * Contains variables, references, types, etc. that are stored when traversing the AST
@@ -198,15 +208,41 @@ class Env(var id: String, val parent: Env, val introducedBy: Node) {
   if (introducedBy != null) introducedBy.env = this
   
   val names = scala.collection.mutable.Map[String, TypeScheme]()
-  val fullnames = scala.collection.mutable.Map[String, String]()
-  val types = scala.collection.mutable.Map[String, Ty]()
+  val types = scala.collection.mutable.Map[String, Type]()
   val restrictions = scala.collection.mutable.Map[String, Restriction]()
   val forwards = scala.collection.mutable.Map[String, NForward]()
   val isas = scala.collection.mutable.Map[String, (Tycon, List[Ty])]()
+  val overrides = scala.collection.mutable.Map[String, List[Over]]()
   
-  def allFull = fullnames ++ (if (parent != null) parent.fullnames else Map())
   def allNames = names ++ (if (parent != null) parent.names else Map())
- 
+
+  def getFull(name: String) = getOverrides(name) match {
+    case List() => null
+    case List(Over(_, fullname, _)) => fullname
+  }
+  
+  def putOverride(name: String, over: Over) : Over = {
+    overrides.get(name) match {
+      case None => overrides.put(name, List(over))
+      case Some(x) => overrides.put(name, over :: x)
+    }
+    over
+  }
+  
+  def putOverride(name: String, fullname: String, ts: TypeScheme) : Over = 
+    putOverride(name, Over(name, fullname, ts))
+  
+  def getOverrides(name: String) : List[Over] = {
+    val mine = overrides.get(name) match {
+      case Some(x) => x
+      case None => List[Over]()
+    }
+    val fromParent = 
+      if (parent != null) parent.getOverrides(name)
+      else List()
+    mine ++ fromParent
+  }
+  
   def putIsa(child: Tycon, parents: List[Ty]) = isas.put(child.name, (child, parents))
   
   def getIsa(child: String) : Option[(Tycon, List[Ty])] = isas.get(child) match {
@@ -234,24 +270,22 @@ class Env(var id: String, val parent: Env, val introducedBy: Node) {
       else None
   }
   
-  def putType(name: String, ty: Ty) = types.put(name, ty)
+  def putType(name: String, fullname: String, ty: Tycon) = types.put(name, Type(fullname, ty))
 
-  def getType(name: String) : Option[Ty] = types.get(name) match {
-    case x:Some[Ty] => x
+  def getType(name: String) : Option[Type] = types.get(name) match {
+    case x:Some[Type] => x
     case None =>
       if (parent != null) parent.getType(name)
       else None
   }
 
-  def put(name: String, fullname: String, ty: TypeScheme) {
+  def put(name: String, ty: TypeScheme) {
     names.put(name, ty)
-    fullnames.put(name, fullname)
   }
   
   def put(name: String, ty: Ty) {
     val ts = TypeScheme(Typer3.tyvars(ty), ty)
     names.put(name, ts)
-    fullnames.put(name, null)
   }
 
   def get2(name: String) : List[(String, TypeScheme)] = {
@@ -265,13 +299,6 @@ class Env(var id: String, val parent: Env, val introducedBy: Node) {
     case None => 
       if (parent != null) parent.get(name) 
       else None
-  }
-  
-  def getFull(name: String) : String = fullnames.get(name) match {
-    case Some(x) => x
-    case None =>
-      if (parent != null) parent.getFull(name)
-      else null
   }
   
   def locate(name: String) : Env = names.get(name) match {
@@ -289,13 +316,10 @@ class Env(var id: String, val parent: Env, val introducedBy: Node) {
     }
   
   override def toString = repr + 
-    //names.map {x => (x._1, x._2.tpe.repr)}.mkString(",") +
     names.map { x => x._1 }.mkString("(", ",", ")") +
     (if (parent != null) (" parent: " + parent.repr) else "")
     
-  def repr = {
-      id
-  }
+  def repr = id
 }
 
 object Env {

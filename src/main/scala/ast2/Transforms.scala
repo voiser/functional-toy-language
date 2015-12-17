@@ -19,6 +19,7 @@ class Transformer {
       case (o: NApply, d:NApply) =>
         d.realName = o.realName
         d.isRecursive = o.isRecursive
+        d.resolvedType = o.resolvedType
       
       case _ => 
     }
@@ -166,7 +167,6 @@ class ObjCallTransformer(module: NModule) extends Transformer {
       case Tycon(name, _) =>
         val realfname = name + "." + n.apply.name
         val x = NApply(realfname, n.callee :: n.apply.params)
-        println(n.apply.realName)
         fill(n.apply, x)
         x
     }
