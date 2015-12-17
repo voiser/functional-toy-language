@@ -25,7 +25,6 @@ public class List extends Thing {
 	}
 	
 	public static class size extends Func {
-		
 		@Override
 		public Thing apply1(Thing a) {
 			List l = (List)a;

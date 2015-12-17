@@ -10,6 +10,7 @@ class Transformer {
     dest.env = origin.env
     dest.ctx = origin.ctx
     dest.ty = origin.ty
+    dest.filename = origin.filename
     
     (origin, dest) match {
       case (o:NFn, d:NFn) =>

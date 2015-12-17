@@ -1,5 +1,6 @@
 package test;
 
+import runtime.DynamicDispatch;
 import runtime.Func;
 import runtime.Int;
 import runtime.Thing;
@@ -12,7 +13,8 @@ public class Kk extends Func {
 	
 	@Override
 	public Thing apply0() {
-		return divide.apply3(ifok, ifko, new Int(189887));
+		
+		return null;
 	}
 
 }

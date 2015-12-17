@@ -14,6 +14,7 @@ import ast2.NString
 import ast2.Node
 import ast2.Ty
 import ast2.Tyfn
+import ast2.Tycon
 import ast2.NRefAnon
 import ast2.NDefAnon
 
@@ -185,6 +186,15 @@ case class CallExtern(
   def repr(d: Int) = margin(d) + "CallExtern " + name + childr(d)
   def children = params
 }
+case class CallDynamic(
+    name: String, 
+    params: List[CodeStep],
+    options: List[String], 
+    intypes: List[String])
+    extends CodeStep {
+  def repr(d: Int) = margin(d) + "CallDynamic " + name + " in " + options.mkString("(", ",", ")") + childr(d)
+  def children = params
+}
 case class SIf(
     cond: CodeStep, 
     exptrue: CodeStep, 
@@ -331,15 +341,30 @@ object Intermediate {
     case NString(s) => SString(s)
 
     case x @ NApply(fname, args) =>
-      val params = args.map { x => translate(unit, function, allLocals, externs, captures, x) }       
-      x.over match {
-        case None =>
+      val params = args.map { x => translate(unit, function, allLocals, externs, captures, x) }
+      (x.over, x.dynamicOver) match {
+        
+        case (None, null) =>
           findlocal(fname, allLocals) match {
-           case Some((name, _, i)) => CallLocal(i, fname, params)
-           case _ => CallConstant(fname, params)
+            case Some((name, _, i)) => CallLocal(i, fname, params)
+            case _ => CallConstant(fname, params)
           }
         
-        case Some(o) =>
+        case (None, x) =>
+          val intypes = x.map { o => 
+            o.ts.tpe match {
+              case Tyfn(in, out) => 
+                def rep(t: Ty) = t match {
+                  case Tycon(name, _) => name
+                  case _ => throw new RuntimeException("Please fill me")
+                }
+                in.map(rep).mkString(";")
+              case z => throw new RuntimeException(fname + " should be a function but its type is " + z.repr) 
+            }
+          }
+          CallDynamic(fname, params, x.map(_.fullname), intypes)
+        
+        case (Some(o), _) =>
           CallExtern(sym(o.fullname), params)
       }
        

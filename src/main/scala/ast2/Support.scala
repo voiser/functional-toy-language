@@ -74,6 +74,7 @@ case class NApply(name: String, params: List[Node]) extends Node {
   
   var resolvedType : Tyfn = null
   var over: Option[Over] = None
+  var dynamicOver: List[Over] = null
 }
 case class NObjApply(callee: Node, apply: NApply) extends Node
 case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node

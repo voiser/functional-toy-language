@@ -274,7 +274,7 @@ class OverVisitor(root: NFn) extends Visitor {
    * 
    */
   def lookupOverride(myType: Ty, name: String, n: Node, overrides: List[Over]) = {
-    val candidates = overrides.map { over =>
+    overrides.map { over =>
       try {
         Typer3.unify(myType, over.ts.tpe, Typer3.emptySubst, n)(new TyvarGenerator("z"), List())
         over
@@ -283,15 +283,6 @@ class OverVisitor(root: NFn) extends Visitor {
         case e:TypeException => null
       }
     }.filterNot { x => x == null }
-    
-    if (candidates.size == 0) None
-    else if (candidates.size == 1)
-      Some(candidates(0))
-    else {
-      val msg = "Too many candidates for '" + name + 
-        "' : " + candidates.map{x => x.fullname + " of type " + x.ts.tpe.repr}.mkString("    ")
-      throw new TypeException(msg, n, List())
-    }
   }
   
   override def visit(n: NDef, r: NRef): Unit = {
@@ -310,23 +301,26 @@ class OverVisitor(root: NFn) extends Visitor {
   
   override def visitNApply(n: NApply) {
     lookupOverride(n.resolvedType, n.name, n, n.env.getOverrides(n.name)) match {
-      case Some(o) => 
+      case List(o) => 
         functions += o
         n.over = Some(o)
         
-      case None => 
+      case List() => 
         pending.get(n.name) match {
           case Some((ref, overs)) =>
             lookupOverride(n.resolvedType, ref.name, n, ref.env.getOverrides(ref.name)) match {
-              case Some(o) => 
-                functions += o
+              case List(o) => 
                 functions += o
                 n.over = Some(o)
                 
-              case None => // the function references a local function
+              case List() => // the function references a local function
             }
           case None => // the function is local
         }
+        
+      case x => // Several options: this means a dynamic dispatch 
+        x.foreach { functions += _ }
+        n.dynamicOver = x
     }
   }
 }

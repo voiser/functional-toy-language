@@ -12,13 +12,29 @@ class Stack {
   var depth = 0;
   var maxdepth = 0;
   
-  def push { 
+  def push {
+    push(1)
+  }
+  
+  def push(x: List[_]) {
+    push(x.size)
+  }
+  
+  def push(i: Int) {
     depth = depth + 1
     if (depth > maxdepth) maxdepth = depth  
   }
   
   def pop {
-    depth = depth - 1
+    pop (1)
+  }
+  
+  def pop(x : List[_]) {
+    pop (x.size)
+  }
+  
+  def pop(i: Int) {
+    depth = depth - i
     if (depth < 0) throw new RuntimeException("Stack depth < 0 -> This is a bug!")
   }
 }
@@ -378,6 +394,47 @@ object Codegen {
         mv.visitMethodInsn(INVOKEVIRTUAL, FUNC, javafname, javasignature, false)
         args.foreach { x => stack.pop }
      
+      case CallDynamic(name, args, options, intypes) =>
+        def pushArray(l: List[_], jt: String) {
+          mv.visitLdcInsn(new Integer(l.length));
+          stack.push
+          mv.visitTypeInsn(ANEWARRAY, jt);
+          stack.push
+          (0 to l.length-1).foreach { case i => 
+            mv.visitInsn(DUP)
+            stack.push
+            mv.visitLdcInsn(new Integer(i))
+            stack.push
+            mv.visitLdcInsn(l(i))
+            stack.push
+            mv.visitInsn(AASTORE);
+            stack pop 3
+          }
+        }
+        
+        pushArray(options.map{_.replace("/", ".")}, "java/lang/String")
+        pushArray(intypes, "java/lang/String")
+
+        {
+          mv.visitLdcInsn(new Integer(args.length));
+          stack.push
+          mv.visitTypeInsn(ANEWARRAY, THING);
+          stack.push
+          (0 to args.length-1).foreach { case i => 
+            mv.visitInsn(DUP)
+            stack.push
+            mv.visitLdcInsn(new Integer(i))
+            stack.push
+            mv.visitVarInsn(ALOAD, i + 1)
+            stack.push
+            mv.visitInsn(AASTORE);
+            stack pop 3
+          }
+        }
+        mv.visitMethodInsn(INVOKESTATIC, "runtime/DynamicDispatch", "dispatch", "([Ljava/lang/String;[Ljava/lang/String;[Lruntime/Thing;)Lruntime/Thing;", false);
+        stack pop args
+        stack.push
+      
       case SIf(cond, extrue, exfalse) =>
         add(module, uf, mv, cond, stack)
         mv.visitTypeInsn(INSTANCEOF, TRUE)
@@ -491,14 +548,12 @@ object Codegen {
     
     val nExports = module.exportedFunctions.length
     
-    //mv.visitIntInsn(SIPUSH, nExports);
     mv.visitLdcInsn(new Integer(nExports));
     mv.visitTypeInsn(ANEWARRAY, "runtime/Export");
     
     ((0 to nExports-1) zip module.exportedFunctions).foreach { case (i, x) => 
       mv.visitInsn(DUP);
       mv.visitLdcInsn(new Integer(i));
-      //mv.visitIntInsn(SIPUSH, i);
       mv.visitTypeInsn(NEW, "runtime/Export");
       mv.visitInsn(DUP);
       mv.visitLdcInsn(x.name);
