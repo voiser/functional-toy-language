@@ -52,4 +52,26 @@ class DynamicDispatchTests extends FunSuite {
     val ret = run(code)
     assert ("2" == ret.toString())
   }
+
+  test ("Static dispatch with the typechecker help 3") { 
+    val code = """
+      mysize = { x List[z] => size(x) }
+      a = [1, 2]
+      mysize(a)
+      """
+    val ret = run(code)
+    assert ("2" == ret.toString())
+  }
+  
+  test ("Dynamic dispatch with references") { 
+    val code = """
+      mysize = size
+      a = [1, 2]
+      b = ["a":1]
+      [ mysize(a), mysize(b) ]
+      """
+    val ret = run(code)
+    assert ("[2 1]" == ret.toString())
+  }
+
 }

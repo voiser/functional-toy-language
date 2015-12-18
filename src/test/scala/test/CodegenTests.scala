@@ -43,13 +43,14 @@ class CodegenTests extends FunSuite {
   /*
   test("Intermediate") { // manual test
     val code = """
+      mysize = size
+      mys = { x List[a] => size(x) }
       
-      mysize = { x => size(x) }
-      
-      a = [1, 2]
+      a = { [1, 2] }
       b = ["a":1]
       
-      [ mysize(a), mysize(b) ]
+      
+      [ mysize(a()), mysize(b), mys(a())]
       
       """
     println(intermediate(code))

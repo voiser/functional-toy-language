@@ -260,19 +260,55 @@ class CallExtractor(root: NFn) extends Visitor {
 }
 
 
+/**
+ * Finds the concrete implementation of a call of a polymorphic function.
+ * 
+ * a = [1, 2]
+ * b = ["a":1, "b":2]
+ * 
+ * size(a) <- This visitor finds that the correct implementation is List.size
+ * size(b) <- This visitor finds that the correct implementation is Dict.size
+ * 
+ * mysize = { x List[a] => size(x) }  <- List.size
+ * mysiz2 = { x => size(x) }          <- ?? 
+ *
+ * In this case the correct implementation of 'size' must be found dynamically
+ * in runtime. This visitor annotates the call node with all the 'size' 
+ * candidates (List.size and Dict.size)
+ * 
+ * How does it work?
+ *
+ * Suppose:
+ * 
+ * size([1, 2])
+ * 
+ * Facts:
+ * 
+ * A) 'size' is a+Set[b]->Int. This is the type given by the environment.
+ * B) This call is List[Int]->Int. This is the type given by the type checker.
+ * C) List.size is defined as List[x]->Int
+ * D) Dict.size is defined as Dict[a, b]->Int
+ * 
+ * The type B is unified independently with the types C and D. It can be only 
+ * unified with C, so that the correct implementation is List.size.
+ * 
+ * mysize = { x -> size(x) }
+ * 
+ * A) 'mysize' is a+Set[b]->Int. This is inferred by the type checker.
+ * B) 'x' is a+Set[b]. The call to 'size' is a+Set[b]->Int
+ * C) List.size is defined as List[x]->Int
+ * D) Dict.size is defined as Dict[a, b]->Int
+ * 
+ * The type B can be unified with both C and D, so it can't be resolved in compile time.
+ * This call will be marked as dynamic 
+ */
 class OverVisitor(root: NFn) extends Visitor {
 
   val functions = scala.collection.mutable.Set[Over]()
-  
   val pending = scala.collection.mutable.Map[String, (NRef, List[Over])]()
-  
+  def externs = functions.toList
   visit(root.value)
   
-  def externs = functions.toList
-  
-  /**
-   * 
-   */
   def lookupOverride(myType: Ty, name: String, n: Node, overrides: List[Over]) = {
     overrides.map { over =>
       try {
@@ -324,14 +360,3 @@ class OverVisitor(root: NFn) extends Visitor {
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-

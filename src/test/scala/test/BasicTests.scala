@@ -225,6 +225,48 @@ class BasicTests extends FunSuite {
     }
   }
   
+  test("Typed function parameter errors 2") {
+    val code = """
+      f = { x List[Int] => 1 }
+      f(1)
+    """
+    try {
+      run(code)
+    }
+    catch {
+      case e: TypeException =>
+        assert (e.getMessage().contains("Type mismatch: incompatible types List[Int] and Int"))
+    }
+  }
+  
+  test("Typed function parameter errors 3") {
+    val code = """
+      f = { x List[a] => 1 }
+      f(1)
+    """
+    try {
+      run(code)
+    }
+    catch {
+      case e: TypeException =>
+        assert (e.getMessage().matches("Type mismatch: incompatible types List\\[.*\\] and Int"))
+    }
+  }
+
+  test("Typed function parameter errors 4") {
+    val code = """
+      f = { x List[Int] => 1 }
+      f(["a", "b"])
+    """
+    try {
+      run(code)
+    }
+    catch {
+      case e: TypeException =>
+        assert (e.getMessage().contains("Type mismatch: incompatible types Int and Str"))
+    }
+  }
+
   test("Continuations") {
     val code = """
       divide = { ifok, ifko, n, d => 
