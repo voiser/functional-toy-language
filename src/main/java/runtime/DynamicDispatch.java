@@ -37,7 +37,7 @@ public class DynamicDispatch {
 			Method m = k.getDeclaredMethod("apply" + nArgs, ak);
 			Object f = k.newInstance();
 			
-			Object ret = m.invoke(f, args);
+			Object ret = m.invoke(f, (java.lang.Object[])args);
 			
 			return (Thing)ret;
 		} catch (Exception e) {
