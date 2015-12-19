@@ -7,6 +7,7 @@ import org.antlr.v4.runtime.CommonTokenStream
 import java.lang.reflect.InvocationTargetException
 import intermediate.Intermediate
 import org.xml.sax.helpers.NewInstance
+import runtime.Java
 
 /**
  * @author david
@@ -40,20 +41,26 @@ class CodegenTests extends FunSuite {
     ty
   }
 
-  /*
+  def matches(in: Any, exp: String) = {
+    val exp2 = "^" + (exp.replace("(", "\\(").replace(")", "\\)")) + "$"
+    val r = exp.r.findFirstIn(in.toString)
+    r match {
+      case Some(_) => true
+      case None => false
+    }
+  }
+
   test("Intermediate") { // manual test
     val code = """
-      mysize = size
-      mys = { x List[a] => size(x) }
-      
-      a = { [1, 2] }
-      b = ["a":1]
-      
-      
-      [ mysize(a()), mysize(b), mys(a())]
-      
+      f1 : a -> Int
+      f2 : a -> a
+
+      f1 = { a => 1 }
+      f2 = { a => a }
+
+      typeof(f1)
       """
-    println(intermediate(code))
+    val res = intermediate(code)
+    assert(matches(res, "(t6 -> Int)"))
   }
-  */
 }

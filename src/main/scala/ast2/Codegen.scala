@@ -513,7 +513,7 @@ object Codegen {
   }
   
   /**
-   * Adds a static field containing the function metadata 
+   * Adds a static field containing the function typeof
    */
   def addMetadata(cw: ClassWriter, module: CreateModule, uf: CreateFunction) {
     

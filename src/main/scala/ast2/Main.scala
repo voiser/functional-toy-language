@@ -130,6 +130,7 @@ object Main {
     registerFn("runtime/Nil",       "nil",        "List[a]")
     registerFn("runtime/dict_of",   "dict",       "a, b -> Dict[a, b]")
     registerFn("runtime/extend",    "extend",     "a, b, Dict[a, b] -> Dict[a, b]")
+    registerFn("runtime/typeof",    "typeof",     "a -> List[Str]")
     
     registerFn("size", "a+Set[b] -> Int")
     registerOverride("runtime/List$size", "size", "List[x] -> Int")

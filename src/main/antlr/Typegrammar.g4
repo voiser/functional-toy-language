@@ -32,6 +32,6 @@ left : ty2
      ;
 
 ID : [A-Z][a-zA-Z]* ;
-VAR : [a-z]+ ;
+VAR : [a-z0-9]+ ;
 WS : [ \t\r\n]+ -> skip ;
 

@@ -7,7 +7,7 @@ public class List extends Thing {
 	
 	public List(Thing head) {
 		this.head = head;
-		this.tail = null;
+		this.tail = new Nil();
 	}
 	
 	public List(Thing head, List tail) {
