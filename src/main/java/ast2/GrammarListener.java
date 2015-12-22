@@ -108,6 +108,16 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitObjapply(GrammarParser.ObjapplyContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link GrammarParser#objfield}.
+	 * @param ctx the parse tree
+	 */
+	void enterObjfield(GrammarParser.ObjfieldContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#objfield}.
+	 * @param ctx the parse tree
+	 */
+	void exitObjfield(GrammarParser.ObjfieldContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link GrammarParser#ref}.
 	 * @param ctx the parse tree
 	 */
@@ -177,4 +187,44 @@ public interface GrammarListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitMappair(GrammarParser.MappairContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#klass}.
+	 * @param ctx the parse tree
+	 */
+	void enterKlass(GrammarParser.KlassContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#klass}.
+	 * @param ctx the parse tree
+	 */
+	void exitKlass(GrammarParser.KlassContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#klassvar}.
+	 * @param ctx the parse tree
+	 */
+	void enterKlassvar(GrammarParser.KlassvarContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#klassvar}.
+	 * @param ctx the parse tree
+	 */
+	void exitKlassvar(GrammarParser.KlassvarContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#klassparent}.
+	 * @param ctx the parse tree
+	 */
+	void enterKlassparent(GrammarParser.KlassparentContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#klassparent}.
+	 * @param ctx the parse tree
+	 */
+	void exitKlassparent(GrammarParser.KlassparentContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link GrammarParser#instantiation}.
+	 * @param ctx the parse tree
+	 */
+	void enterInstantiation(GrammarParser.InstantiationContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#instantiation}.
+	 * @param ctx the parse tree
+	 */
+	void exitInstantiation(GrammarParser.InstantiationContext ctx);
 }

@@ -30,12 +30,12 @@ class Runtime {
   val x = new VolatileClassLoader(this.getClass.getClassLoader)
   
   def register(pack: String, name: String, bytes: Array[Byte]) {
-    x.add(pack + "." + name, bytes)
     val destination = new File("/tmp", pack)
     destination.mkdirs()
     val f = new FileOutputStream(new File(destination, name + ".class"))
     f.write(bytes)
     f.close()
+    x.add(pack + "." + name, bytes)
   }
   
   def inspect(name: String) {

@@ -49,21 +49,18 @@ class CodegenTests extends FunSuite {
       case None => false
     }
   }
-  
+
   /*
   test("Intermediate") { // manual test
     val code = """
-      f1 : a -> Int
-      f2 : a -> a
+      class Person(name Str, age a)
 
-      f1 = { a => 1 }
-      f2 = { a => a }
+      nameof = { x Person => x.name }
 
-      typeof(f1)
+      nameof(Person("David", 33))
       """
     val res = intermediate(code)
     println("matches = " + res)
-    assert(matches(res, "(t[\\d]+ -> Int)"))
   }
   */
 }

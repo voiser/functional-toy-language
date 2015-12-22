@@ -27,7 +27,8 @@ class CompilationUnit(
   val filename: String,
   val module: NModule, 
   val functions: List[Function], 
-  val externs: List[Extern]
+  val externs: List[Extern],
+  val classes: List[Klass]
 ) {
   
   // Generates all function units contained in this set
@@ -60,11 +61,15 @@ class CompilationUnit(
       }
       
       val locals0: List[(String, Node, Int)] = myself :: params ++ root.value.children.collect {
-        case NDef(name, v : NApply) => 
+        case NDef(name, v : NApply) =>
           l = l + 1
           localmap.put(name, l)
           (name, v, l)
-        case NDef(name, v : NFn) => 
+        case NDef(name, v : NFn) =>
+          l = l + 1
+          localmap.put(name, l)
+          (name, v, l)
+        case NDef(name, v : NInstantiation) =>
           l = l + 1
           localmap.put(name, l)
           (name, v, l)
@@ -90,6 +95,7 @@ class CompilationUnit(
               localmap.put(name, l)
               (name, a, l)
           }
+
       }
       val locals = locals0.filter(_ != null)
       

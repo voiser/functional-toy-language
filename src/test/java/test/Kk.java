@@ -5,16 +5,11 @@ import runtime.Func;
 import runtime.Int;
 import runtime.Thing;
 
-public class Kk extends Func {
+public class Kk extends Thing {
 
-	private Func divide;
-	private Func ifok;
-	private Func ifko;
-	
-	@Override
-	public Thing apply0() {
-		
-		return null;
+	private Thing a;
+
+	public Kk(Thing d) {
+        a = null;
 	}
-
 }

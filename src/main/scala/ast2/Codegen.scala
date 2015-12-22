@@ -96,9 +96,9 @@ object Codegen {
    * Adds an empty constructor to a class
    */
   def addConstructor(
-        cw: ClassWriter, 
-        module: CreateModule,
-        uf: CreateFunction) {
+      cw: ClassWriter,
+      module: CreateModule,
+      uf: CreateFunction) {
 
     val mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null)
     mv.visitCode()
@@ -290,7 +290,6 @@ object Codegen {
         mv.visitInsn(DUP);
         stack.push
         mv.visitLdcInsn(new Integer(v));
-        //mv.visitIntInsn(SIPUSH, v);
         stack.push
         mv.visitMethodInsn(INVOKESPECIAL, "runtime/Int", "<init>", "(I)V", false);
         stack.pop
@@ -447,6 +446,26 @@ object Codegen {
         mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
         add(module, uf, mv, exfalse, stack)
         stack.push
+
+      case Instance(cname, argtypes, args) =>
+        val signature = argtypes.map(a => jsuperclass(a)).mkString("(", "", ")V")
+        mv.visitTypeInsn(NEW, cname);
+        stack.push
+        mv.visitInsn(DUP);
+        stack.push
+        args.foreach { arg =>
+          add(module, uf, mv, arg, stack)
+        }
+        mv.visitMethodInsn(INVOKESPECIAL, cname, "<init>", signature, false);
+        stack.pop
+        stack.pop
+
+      case InstanceField(name, local, classname, fieldname) =>
+        mv.visitVarInsn(ALOAD, local);
+        stack.push
+        mv.visitTypeInsn(CHECKCAST, classname);
+        mv.visitFieldInsn(GETFIELD, classname, fieldname, JTHING);
+        stack.push
     }
   }
   
@@ -568,7 +587,8 @@ object Codegen {
    * Guess what
    */
   def slashedName(module: CreateModule, uf: CreateFunction) = module.name + "/" + uf.name
-  
+  def slashedName(module: CreateModule, uf: CreateClass) = module.name + "/" + uf.name
+
   /**
    * Generates a Java class for a function in a module
    */
@@ -589,10 +609,70 @@ object Codegen {
     
     (module.name, f.name, cw.toByteArray())
   }
+
+  /**
+   * Adds fields to a class
+   */
+  def addFields(cw: ClassWriter, module: CreateModule, c: CreateClass) {
+    c.fields.foreach { f =>
+      val fv  = cw.visitField(ACC_PUBLIC + ACC_FINAL, f.name, jsuperclass(f.ty), null, null)
+      fv.visitEnd
+    }
+  }
+
+  /**
+   * Adds an empty constructor to a class
+   */
+  def addConstructor(cw: ClassWriter, module: CreateModule, c: CreateClass) {
+    val cname = c.name
+    val nFields = c.fields.size
+    val signature = c.fields.map(f => jsuperclass(f.ty)).mkString("(", "", ")V")
+    val mv = cw.visitMethod(ACC_PUBLIC, "<init>", signature, null, null)
+    mv.visitCode()
+
+    val stack = new Stack()
+
+    mv.visitVarInsn(ALOAD, 0)
+    stack.push
+    mv.visitMethodInsn(INVOKESPECIAL, THING, "<init>", "()V", false)
+    stack.pop
+
+    ((1 to nFields) zip c.fields).foreach { case (i, f) =>
+      mv.visitVarInsn(ALOAD, 0);
+      stack.push
+      mv.visitVarInsn(ALOAD, i);
+      stack.push
+      mv.visitFieldInsn(PUTFIELD, slashedName(module, c), f.name, jsuperclass(f.ty))
+      stack pop 2
+    }
+
+    mv.visitInsn(RETURN)
+    mv.visitMaxs(stack.maxdepth + 1, nFields + 1)
+    mv.visitEnd()
+  }
+
+  /**
+   * Generates a Java class for a class in a module
+   */
+  def genclass(module: CreateModule, c: CreateClass) = {
+    val cw = new ClassWriter(0)
+    cw.visit(V1_7, ACC_PUBLIC + ACC_SUPER, slashedName(module, c), null, THING, null)
+
+    addFields(cw, module, c)
+    addConstructor(cw, module, c)
+    cw.visitEnd()
+    cw.toByteArray()
+
+    (module.name, c.name, cw.toByteArray())
+  }
   
   def codegen(module: CreateModule) = {
-    module.functions.map { f =>
+    val fs = module.functions.map { f =>
       genclass(module, f)
     }
+    val cs = module.classes.map { c =>
+      genclass(module, c)
+    }
+    fs ++ cs
   }
 }

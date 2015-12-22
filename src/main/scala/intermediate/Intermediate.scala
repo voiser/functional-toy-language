@@ -1,22 +1,6 @@
 package intermediate
 
-import ast2.CompilationUnit
-import ast2.CompilationUnitFunction
-import ast2.NApply
-import ast2.NDef
-import ast2.NFloat
-import ast2.NFn
-import ast2.NForward
-import ast2.NIf
-import ast2.NInt
-import ast2.NRef
-import ast2.NString
-import ast2.Node
-import ast2.Ty
-import ast2.Tyfn
-import ast2.Tycon
-import ast2.NRefAnon
-import ast2.NDefAnon
+import ast2._
 
 abstract class CodegenType
 case class CodegenValue() extends CodegenType {
@@ -36,10 +20,11 @@ abstract class CodegenStep {
 }
 case class CreateModule(
     name: String, 
-    functions: List[CreateFunction]) 
+    functions: List[CreateFunction],
+    classes: List[CreateClass])
     extends CodegenStep {
   def repr(d: Int) = margin(d) + "Module " + name + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
-  def children = functions
+  def children = functions ++ classes
   def exportedFunctions = functions // we don't have private and public functions yet
 }
 case class CreateFunction(
@@ -198,16 +183,45 @@ case class CallDynamic(
 case class SIf(
     cond: CodeStep, 
     exptrue: CodeStep, 
-    expfalse: CodeStep
-    ) extends CodeStep {
+    expfalse: CodeStep)
+    extends CodeStep {
   def listr(list: List[CodeStep], d: Int) = " {\n" + listrepr(list, d) + "\n" + margin(d) + "}"
   def repr(d: Int) = margin(d) + "If {\n" + cond.repr(d + 1) + "\n" + margin(d) + 
     "} then {\n" + exptrue.repr(d + 1) + "\n" + margin(d) + 
     "} else {\n" + expfalse.repr(d + 1) + "\n" + margin(d) + "}"
   def children = List()
 }
-    
-
+case class CreateClass(
+    name: String,
+    fields: List[CreateField])
+    extends CodegenStep {
+  def repr(d: Int) = margin(d) + "Class " + name + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
+  def children = fields
+}
+case class CreateField(
+    name: String,
+    ty: CodegenType)
+    extends CodegenStep {
+  def repr(d: Int) = margin(d) + "Field " + name + " " + ty
+  def children = List()
+}
+case class Instance(
+    classname: String,
+    argtypes: List[CodegenType],
+    params: List[CodeStep])
+    extends CodeStep {
+  def repr(d: Int) = margin(d) + "Instantiate " + classname + childr(d)
+  def children = params
+}
+case class InstanceField(
+    name: String,
+    local: Int,
+    classname: String,
+    fieldname: String)
+    extends CodeStep {
+  def repr(d: Int) = margin(d) + "InstanceField " + local + " " + name + " " + classname + " " + fieldname
+  def children = List()
+}
 object Intermediate {
   
   def codegenType(ty: Ty) = ty match {
@@ -387,14 +401,36 @@ object Intermediate {
             }
           }
       }
-      
+
+    case x @ NInstantiation(cname, args) =>
+      x.env.getClass(cname) match {
+        case None => throw new RuntimeException("This is a compiler bug")
+        case Some(k) =>
+          val params = args.map { x => translate(unit, function, allLocals, externs, captures, x) }
+          Instance(k.fullname, k.fields.toList.map{f => codegenType(f.ty)}, params)
+      }
+
+    case x @ NField(owner, fname) =>
+      findlocal(owner, allLocals) match {
+        case None => throw new RuntimeException("This is a compiler bug")
+        case Some((name, _, i)) => InstanceField(name, i, x.klass.fullname, fname)
+      }
+
     case _ => Nop()
   }
-  
+
+  def genclass(unit: CompilationUnit, k: Klass) = {
+    val fields = k.fields.toList.map(f => CreateField(f.name, codegenType(f.ty)))
+    CreateClass(k.localname, fields)
+  }
+
   def codegen(unit: CompilationUnit) = {
     val functions = unit.unitFunctions.map { uf =>
       genfunction(unit, uf)
     }
-    CreateModule(unit.filename, functions) 
+    val classes = unit.classes.map { k =>
+      genclass(unit, k)
+    }
+    CreateModule(unit.filename, functions, classes)
   }
 }

@@ -265,8 +265,6 @@ object Typer3 {
   def tp(env: Env, n: Node, t: Ty, s: Subs) (implicit gen: TyvarGenerator, trace: List[TraceElement]) : Subs = {
     n.env = env
     
-    // println("Typing " + n)
-    
     // Utility function to add a trace
     def trac(s: String) = mktrace(s, n, trace)
     
@@ -278,7 +276,7 @@ object Typer3 {
        * Store the forward type
        * Unify t with the given type
        * 
-       * f :: Int -> Int
+       *   f :: Int -> Int
        * 
        * env("f$$forward") = Int -> Int
        */
@@ -300,8 +298,8 @@ object Typer3 {
       /*
        * Reference expression, like in 
        * 
-       * def a = 9
-       * def b = a
+       *   def a = 9
+       *   def b = a
        * 
        * Find the referenced name's type in the env
        * unify t with it
@@ -325,7 +323,7 @@ object Typer3 {
               /*
                * No forward definition
                * 
-               * def x = ...
+               *   def x = ...
                * 
                * Type the expression, store its type in the environment and unify t with it
                * 
@@ -340,8 +338,8 @@ object Typer3 {
               /*
                * There is a forward definition and it's a function
                * 
-               * f :: Int -> Int
-               * def f = { ... }
+               *   f :: Int -> Int
+               *   def f = { ... }
                * 
                * Infer the function type by typing the function expression.
                * The forward and inferred types should be unifiable and equivalent (see #checkForward)
@@ -369,8 +367,8 @@ object Typer3 {
               /*
                * There is a forward definition, and it's not a function
                * 
-               * f :: List[Int]
-               * def f = [1, 2, 3]
+               *   f :: List[Int]
+               *   def f = [1, 2, 3]
                * 
                * Like the previous case without function-specific stuff
                */
@@ -391,11 +389,11 @@ object Typer3 {
       /*
        * Function expression
        * 
-       * { x, y Int -> add(x, y) }
+       *   { x, y Int -> add(x, y) }
        * 
        * generate new function type:
        * 
-       * t' = a, Int -> c
+       *   t' = a, Int -> c
        * 
        * Unify t with t'
        * Generate a new env and store each parameter type:
@@ -437,7 +435,7 @@ object Typer3 {
       
       /*
        * Function application
-       * f(a, b, c)
+       *   f(a, b, c)
        */
       case x @ NApply(name, args) => 
         val a = args.map { x => gen.get() }
@@ -492,11 +490,11 @@ object Typer3 {
       /*
        * object-style calls
        * 
-       * x.f(a, b, c) 
+       *   x.f(a, b, c)
        * 
        * is typed like
        * 
-       * apply("[type name of x].f", x, a, b, c)
+       *   apply("[type name of x].f", x, a, b, c)
        */
       case x @ NObjApply(z @ NRef(rname), y @ NApply(fname, params)) =>
         val basetype = env.get(rname) match {
@@ -512,9 +510,9 @@ object Typer3 {
         val s1 = tp(env, node, t, s)
         y.realName = node.realName
         y.isRecursive = node.isRecursive
+        y.resolvedType = node.resolvedType
         s1
         
-
       /*
        * 'If' expression
        * 
@@ -545,6 +543,111 @@ object Typer3 {
           x
         }
         unify(t, s1(b), s1, n)
+
+      /*
+       * Class definition
+       * Register the class and the constructor in the environment
+       * The type of the definition of class X[...] is Class[X[...]]
+       * Unify t with Class[X[...]]
+       */
+      case z @ NClass(name, params, restrictions) =>
+        val members = params.map { pair =>
+          val name = pair._1
+          val gty = pair._2
+          (name, Typegrammar.toType(gty))
+        }
+        val typedParams = members map {_._2}
+        val vars = (typedParams map tyvars).flatten.distinct
+        val y = Tycon(name, vars)
+        val x = Tycon("Class", List(y))
+        // TODO: check that the new class defines all methods in the restrictions
+        // that is, a new class which is a +Set[x] must implement all methods in Set
+        Main.registerTy(null, y, List())(env)
+        val constructor = TypeScheme(vars, Tyfn(typedParams, y))
+        env.put(name, constructor)
+        val k = new Klass(name, constructor)
+        members.foreach { member =>
+          k.addField(member._1, member._2)
+        }
+        env.putClass(k)
+        unify(t, x, s, n)
+
+      /*
+       * Class instantiation
+       *
+       *   class Pair(left l, right r)
+       *   aPair = Pair("hi", 3)
+       *
+       * Type the call of the constructor like a normal function call.
+       */
+      case z @ NInstantiation(classname, params) =>
+        env.get(classname) match {
+          case None => throw new TypeException("Can't find class " + classname, n, trace)
+          case Some(ts) =>
+            val constructor = ts.newInstance(gen)
+            constructor match {
+              case Tyfn(ins, out) =>
+                if (ins.length != params.length) throw new TypeException("Constructor parameters do not match. Given " + params.length + " needed " + ins.length, n, trace)
+                val s1 = unify(t, out, s, n)
+                val s2 = (s1 /: (params zip ins)) ((s, x) => tp(env, x._1, x._2, s))
+                s2
+            }
+        }
+
+      /*
+       * Access an instance field
+       *
+       *   class Pair(left l, right t)
+       *   myPair = Pair("one", 1)
+       *   myPair.left
+       *
+       * Find the class definition:
+       *
+       *   class Pair(left l, right r)
+       *
+       * Find the instance definition:
+       *
+       *   myPair = Pair("one", 1)
+       *
+       * Unify the arguments:
+       *
+       *   l -> Str
+       *   r -> Int
+       *
+       * Find the field type
+       *
+       *   Pair.left -> l
+       *
+       * Apply the unification
+       *
+       *   myPair.left -> Str
+       *
+       */
+      case z @ NField(owner, field) =>
+        val obj = env.get(owner) match {
+          case None => throw new TypeException("Can't find '" + owner + "' in the environment", n, trace)
+          case Some(ts) => ts.tpe
+        }
+        val className = obj match {
+          case Tycon(name, _) => name
+          case _ => throw new TypeException("Accessing a field of an unknown type instance", n, trace)
+        }
+        val klass = env.getClass(className) match {
+          case Some(k) => k
+          case None => throw new TypeException("This is a compiler bug", n, trace)
+        }
+        val ctor = klass.constructor.tpe match {
+          case x : Tyfn => x
+          case _ => throw new TypeException("This is a compiler bug", n, trace)
+        }
+        val ss = unify(ctor.out, obj, emptySubst, n)
+        val f = klass.fields.find(_.name == field) match {
+          case None => throw new TypeException("Field " + field + " not found in class " + className, n, trace)
+          case Some(f) => f
+        }
+        val fieldty = ss(f.ty)
+        z.klass = klass
+        unify(t, fieldty, s, n)
     }
     n.ty = tysub(t)
     tysub

@@ -71,6 +71,12 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitObjapply(GrammarParser.ObjapplyContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link GrammarParser#objfield}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitObjfield(GrammarParser.ObjfieldContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link GrammarParser#ref}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -112,4 +118,28 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitMappair(GrammarParser.MappairContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#klass}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitKlass(GrammarParser.KlassContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#klassvar}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitKlassvar(GrammarParser.KlassvarContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#klassparent}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitKlassparent(GrammarParser.KlassparentContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#instantiation}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitInstantiation(GrammarParser.InstantiationContext ctx);
 }

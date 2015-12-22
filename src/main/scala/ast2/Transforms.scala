@@ -166,7 +166,7 @@ class ObjCallTransformer(module: NModule) extends Transformer {
   override def visitNObjApply(n: NObjApply) = {
     n.callee.ty match {
       case Tycon(name, _) =>
-        val realfname = name + "." + n.apply.name
+        val realfname = name + "$" + n.apply.name
         val x = NApply(realfname, n.callee :: n.apply.params)
         fill(n.apply, x)
         x

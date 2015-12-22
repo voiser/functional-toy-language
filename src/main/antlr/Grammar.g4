@@ -26,6 +26,9 @@ expression
     | left=expression binop='==' right=expression
     | left=expression binop=('*' | '/') right=expression
     | left=expression binop=('+' | '-') right=expression
+    | klass
+    | instantiation
+    | objfield
     ;
 
 value
@@ -56,6 +59,10 @@ objapply
     : ref '.' apply
     ;
 
+objfield
+    : ref '.' ID
+    ;
+
 ref
     : ID
     ;
@@ -82,6 +89,22 @@ map
 
 mappair
     : mapkey=expression ':' mapvalue=expression
+    ;
+
+klass 
+	: 'class' CLASSID '(' (klassvar (',' klassvar)*)? ')' ('is' klassparent (',' klassparent)*)?
+	;
+
+klassvar
+	: ID ty=tydef
+	;
+
+klassparent
+	: CLASSID | ID | klassparent '[' klassparent (',' klassparent)* ']' | klassparent ',' klassparent 
+	;
+
+instantiation
+    : CLASSID '(' (expression (',' expression)*)? ')'
     ;
 
 ID

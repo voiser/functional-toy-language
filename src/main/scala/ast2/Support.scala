@@ -79,6 +79,28 @@ case class NApply(name: String, params: List[Node]) extends Node {
 case class NObjApply(callee: Node, apply: NApply) extends Node
 case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
 case class NForward(name: String, tydef: GTy) extends Node
+case class NClass(name: String, params: List[(String, GTy)], is: List[GTy]) extends Node
+case class NInstantiation(className: String, params: List[Node]) extends Node
+case class NField(owner: String, field: String) extends Node {
+  var klass : Klass = null
+}
+
+
+/**
+  * A type class and its members
+  */
+case class Field(name: String, ty: Ty)
+class Klass(val name: String, val constructor: TypeScheme) {
+  val fields = scala.collection.mutable.MutableList[Field]()
+  var namespace : String = null
+  var modulename : String = null
+
+  def addField(name: String, ty: Ty) = fields += new Field(name, ty)
+  override def toString() = "Class " + name + " "  + constructor.tpe.repr
+
+  def localname = (if (namespace == null) "" else namespace + "$") + name
+  def fullname = modulename + "/" + localname
+}
 
 
 /**
@@ -214,8 +236,18 @@ class Env(var id: String, val parent: Env, val introducedBy: Node) {
   val forwards = scala.collection.mutable.Map[String, NForward]()
   val isas = scala.collection.mutable.Map[String, (Tycon, List[Ty])]()
   val overrides = scala.collection.mutable.Map[String, List[Over]]()
+  val classes = scala.collection.mutable.Map[String, Klass]()
   
   def allNames = names ++ (if (parent != null) parent.names else Map())
+
+  def putClass(k: Klass) = classes.put(k.name, k)
+
+  def getClass(name: String) : Option[Klass] = classes.get(name) match {
+    case x : Some[Klass] => x
+    case None =>
+      if (parent != null) parent.getClass(name)
+      else None
+  }
 
   def getFull(name: String) = getOverrides(name) match {
     case List() => null

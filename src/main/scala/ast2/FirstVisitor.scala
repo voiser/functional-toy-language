@@ -159,5 +159,28 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     }
     cons(pairs)
   }
+
+  override def visitKlass(ctx: GrammarParser.KlassContext) = {
+    def getKlassvar(ctx: GrammarParser.KlassvarContext) = {
+      val name = ctx.ID().getText
+      val ty = getTy(ctx.tydef)
+      (name, ty)
+    }
+    val name = ctx.CLASSID().getText
+    val typarams = ctx.klassvar.asScala.toList map getKlassvar
+    fill(NClass(name, typarams, List()), ctx)
+  }
+
+  override def visitInstantiation(ctx: GrammarParser.InstantiationContext) = {
+    val className = ctx.CLASSID().getText
+    val params = ctx.expression().asScala.toList map visitExpression
+    fill(NInstantiation(className, params), ctx)
+  }
+
+  override def visitObjfield(ctx: GrammarParser.ObjfieldContext) = {
+    val name = ctx.ref().ID().getText
+    val field = ctx.ID().getText
+    fill(new NField(name, field), ctx)
+  }
 }
 

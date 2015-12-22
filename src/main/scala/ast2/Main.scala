@@ -22,11 +22,13 @@ object Main {
    *
    * This method looks for all parent types
    */
-  def registerTy(fullname: String, child: String, parents: List[String])(implicit env: Env) : Ty = {
+  def registerTy(fullname: String, child: String, parents: List[String])(implicit env: Env) : Ty = registerTy(fullname, tycon(child), parents)
+
+  def registerTy(fullname: String, ty: Tycon, parents: List[String])(implicit env: Env) : Ty = {
     def parentsOf(n: String) : List[String] = {
       val myparents = env.getIsa(n) match {
         case None => List()
-        case Some((x, y)) => 
+        case Some((x, y)) =>
           y.collect {
             case z : Tycon => z.name
           }
@@ -34,18 +36,14 @@ object Main {
       val theirparents = myparents flatMap parentsOf
       (myparents ++ theirparents).distinct
     }
-    
+
     val allparents = parents ++ (parents flatMap parentsOf)
-    val ty = tycon(child)
-    //env.putType(ty.name, ty)
-    
     val tyvars = Typer3.tyvars(ty)
     val ts = TypeScheme(tyvars, ty)
     env.put(ty.name, ts)
     env.putType(ty.name, fullname, ty)
     isa(ty, allparents)
   }
-
 
   /*
    * Registers a IS-A restriction in an environment
@@ -101,6 +99,7 @@ object Main {
   def rootEnv = {
     implicit val env = Env()
 
+    registerTy("runtime/Class",     "Class[a]")
     registerTy("runtime/Unit",      "Unit")
     registerTy("runtime/Eq",        "Eq")
     registerTy("runtime/Set",       "Set[a]")
@@ -213,7 +212,7 @@ object Main {
     def apply(module: NModule) = {
       module.main.fwdty = Tyfn(List(), Tyvar("a", List()))
       Typer3.getType(env, module.main)
-      //show(module.main, code)
+      // show(module.main, code)
       module
     }
   }
@@ -238,6 +237,8 @@ object Main {
     def apply(module: NModule) = {
       // Name all named functions
       new FunctionNamerVisitor2(null).visit(module.main)
+      // Set all classes namespaces
+      new ClassNamer(module.name, null).visit(module.main)
       // Name all anonymous functions
       val anonFuncs = new AnonymousFunctionNamerVisitor(module).anonFuncs
       // make anonymous functions local
@@ -246,7 +247,7 @@ object Main {
       ret
     }
   }
-  
+
   
   /*
    * Generates a CompilationUnit 
@@ -256,7 +257,10 @@ object Main {
     val funcs = new FunctionVisitor(module).functions.toList
     // Extract references to all external symbols
     val externs = funcs.map { f => Extern(f.function, new OverVisitor(f.function).externs) }
-    new CompilationUnit(filename, module, funcs, externs)
+    // Extract all defined classes
+    val classes = new ClassExtractor(module).classes
+    // The final compilation unit.
+    new CompilationUnit(filename, module, funcs, externs, classes)
   }
   
   
@@ -339,7 +343,14 @@ object Main {
           show0(cond, d+1)
           show0(exptrue, d+1)
           show0(expfalse, d+1)
-                  
+
+        case x @ NClass(name, params, parents) =>
+          rep("Class " + name)
+
+        case x @ NInstantiation(name, params) =>
+          rep("new " + name)
+          params.foreach { x => show0(x, d+1) }
+
         case _ =>
           rep(n.toString())
       }

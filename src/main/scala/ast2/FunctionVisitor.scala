@@ -43,6 +43,9 @@ class Visitor {
   def visitAlias(n: NDef, r: NRef) {
   }
 
+  def visitNClass(n: NClass) {
+  }
+
   def visit(n: NFn): Unit = {
     visitNFn(n)
     visit(n.value)
@@ -93,6 +96,10 @@ class Visitor {
     visit(n)
   }
 
+  def visit(n: NClass): Unit = {
+    visitNClass(n)
+  }
+
   def visit(n: Node) : Unit = {
     n match {
       
@@ -124,6 +131,9 @@ class Visitor {
         visit(x)
         
       case x : NRefAnon =>
+        visit(x)
+
+      case x : NClass =>
         visit(x)
         
       case _ =>    
@@ -263,14 +273,14 @@ class CallExtractor(root: NFn) extends Visitor {
 /**
  * Finds the concrete implementation of a call of a polymorphic function.
  * 
- * a = [1, 2]
- * b = ["a":1, "b":2]
+ *   a = [1, 2]
+ *   b = ["a":1, "b":2]
  * 
- * size(a) <- This visitor finds that the correct implementation is List.size
- * size(b) <- This visitor finds that the correct implementation is Dict.size
+ *   size(a) <- This visitor finds that the correct implementation is List.size
+ *   size(b) <- This visitor finds that the correct implementation is Dict.size
  * 
- * mysize = { x List[a] => size(x) }  <- List.size
- * mysiz2 = { x => size(x) }          <- ?? 
+ *   mysize = { x List[a] => size(x) }  <- List.size
+ *   mysiz2 = { x => size(x) }          <- ??
  *
  * In this case the correct implementation of 'size' must be found dynamically
  * in runtime. This visitor annotates the call node with all the 'size' 
@@ -280,7 +290,7 @@ class CallExtractor(root: NFn) extends Visitor {
  *
  * Suppose:
  * 
- * size([1, 2])
+ *   size([1, 2])
  * 
  * Facts:
  * 
@@ -292,7 +302,7 @@ class CallExtractor(root: NFn) extends Visitor {
  * The type B is unified independently with the types C and D. It can be only 
  * unified with C, so that the correct implementation is List.size.
  * 
- * mysize = { x -> size(x) }
+ *   mysize = { x -> size(x) }
  * 
  * A) 'mysize' is a+Set[b]->Int. This is inferred by the type checker.
  * B) 'x' is a+Set[b]. The call to 'size' is a+Set[b]->Int
@@ -357,6 +367,43 @@ class OverVisitor(root: NFn) extends Visitor {
       case x => // Several options: this means a dynamic dispatch 
         x.foreach { functions += _ }
         n.dynamicOver = x
+    }
+  }
+}
+
+
+class ClassNamer(module: String, name: String) extends Visitor {
+
+  override def visit(x: NClass) {
+    val ns = if (name != null) name else null
+    x.env.getClass(x.name) match {
+      case None => throw new TypeException("Class " + x.name + " not found. This is a compiler bug", x, List())
+      case Some(k) =>
+        k.namespace = ns
+        k.modulename = module
+    }
+  }
+
+  override def visit(n: NDef) {
+    val newName = if (name != null) name + "$" + n.name else n.name
+    new ClassNamer(module, newName).visit(n.value)
+  }
+}
+
+
+class ClassExtractor(module: NModule) extends Visitor {
+
+  val found = scala.collection.mutable.MutableList[Klass]()
+  visit(module.main.value)
+
+  def classes = found.toList
+
+  override def visitNClass(n: NClass) {
+    val cname = n.name
+    val klass = n.env.getClass(cname)
+    klass match {
+      case None => throw new TypeException("This is a compiler bug", n, List())
+      case Some(k) => found.+=(k)
     }
   }
 }
