@@ -22,7 +22,7 @@ expression
     | '(' exp=expression ')'
     | list
     | map
-    | left=expression binop='==' right=expression
+    | left=expression binop=('=='|'!=') right=expression
     | left=expression binop=('*' | '/') right=expression
     | left=expression binop=('+' | '-') right=expression
     | klass

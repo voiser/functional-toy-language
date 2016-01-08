@@ -14,8 +14,6 @@ import ast2.GrammarParser.ForwardContext
 class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
 
   def fill[T <: Node](n: T, c: ParserRuleContext) = {
-    val line = c.start.getLine
-    val column = c.start.getCharPositionInLine
     n.filename = filename
     n.ctx = c
     n
@@ -41,6 +39,7 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
         case "*" => "times"
         case "/" => "div"
         case "==" => "eq"
+        case "!=" => "neq"
       }
       fill(NApply(fname, List(left, right)), ctx)
     }
@@ -50,11 +49,11 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
       fill(NDef(ident, expr), ctx)
     }
     else if (ctx.defn != null) {
-      val params = ctx.fnargpair().asScala.toList.map { visitFnargpair(_).asInstanceOf[NFnArg] }
-      val thefn = (params, visitExpression(ctx.body)) match {
-        case (params, x @ NFn(List(), _)) if (params.size == 0) => x
+      val pars = ctx.fnargpair().asScala.toList.map { visitFnargpair(_).asInstanceOf[NFnArg] }
+      val thefn = (pars, visitExpression(ctx.body)) match {
+        case (params, x @ NFn(List(), _)) if params.isEmpty => x
         case (params, x @ NFn(List(), fb)) => fill(NFn(params, fb), ctx.body)
-        case (params, x @ NFn(pars, b)) => fill(NFn(params, fill(NBlock(List(x)), ctx.body)), ctx.body)
+        case (params, x @ NFn(fp, b)) => fill(NFn(params, fill(NBlock(List(x)), ctx.body)), ctx.body)
         case (params, e) => fill(NFn(params, NBlock(List(e))), ctx.body)
       }
       val ident = ctx.defn.getText
@@ -84,7 +83,7 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
 
   override def visitApply(ctx: GrammarParser.ApplyContext) = {
     val fname = ctx.ID.getText
-    val params= ctx.expression().asScala.toList.map { visitExpression(_) }
+    val params= ctx.expression().asScala.toList map visitExpression
     fill(NApply(fname, params), ctx)
   }
   
@@ -94,19 +93,11 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     fill(NObjApply(ref, apply), ctx)
   }
 
-  /*
-  override def visitDef(ctx: GrammarParser.DefContext) = {
-    val ident = ctx.ID.getText;
-    val expr = visitExpression(ctx.expression());
-    fill(NDef(ident, expr), ctx)
-  }
-  */
-  
   override def visitRef(ctx: GrammarParser.RefContext) = {
     val ident = ctx.ID.getText
     fill(NRef(ident), ctx)
   }
-  
+
   override def visitFnargpair(ctx: GrammarParser.FnargpairContext) = {
     val ident = ctx.ID.getText
     val r =
