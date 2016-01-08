@@ -316,7 +316,7 @@ class OverVisitor(root: NFn) extends Visitor {
 
   val functions = scala.collection.mutable.Set[Over]()
   val pending = scala.collection.mutable.Map[String, (NRef, List[Over])]()
-  def externs = functions.toList
+  def externs = functions.toList.groupBy(_.fullname).map(_._2.head).toList // remove duplicates (Overs with the same full name)
   visit(root.value)
   
   def lookupOverride(myType: Ty, name: String, n: Node, overrides: List[Over]) = {
