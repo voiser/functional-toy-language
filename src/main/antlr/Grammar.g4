@@ -15,7 +15,6 @@ block
 expression
     : value
     | fn
-    | def
     | apply
     | objapply
     | ref
@@ -29,6 +28,9 @@ expression
     | klass
     | instantiation
     | objfield
+    | defsimple=ID '=' defsimple2=expression
+    | defn=ID '(' ')'                            '=' body=expression 
+    | defn=ID '(' fnargpair (',' fnargpair)* ')' '=' body=expression 
     ;
 
 value
@@ -44,10 +46,6 @@ fn
 
 fnargpair
     : ID tydef?
-    ;
-
-def
-    : ID '=' expression
     ;
 
 apply

@@ -44,6 +44,22 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
       }
       fill(NApply(fname, List(left, right)), ctx)
     }
+    else if (ctx.defsimple != null) {
+      val ident = ctx.defsimple.getText
+      val expr = visitExpression(ctx.defsimple2)
+      fill(NDef(ident, expr), ctx)
+    }
+    else if (ctx.defn != null) {
+      val params = ctx.fnargpair().asScala.toList.map { visitFnargpair(_).asInstanceOf[NFnArg] }
+      val thefn = (params, visitExpression(ctx.body)) match {
+        case (params, x @ NFn(List(), _)) if (params.size == 0) => x
+        case (params, x @ NFn(List(), fb)) => fill(NFn(params, fb), ctx.body)
+        case (params, x @ NFn(pars, b)) => fill(NFn(params, fill(NBlock(List(x)), ctx.body)), ctx.body)
+        case (params, e) => fill(NFn(params, NBlock(List(e))), ctx.body)
+      }
+      val ident = ctx.defn.getText
+      fill(NDef(ident, thefn), ctx)
+    }
     else visitChildren(ctx)
   }
   
@@ -77,12 +93,14 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     val apply = visitApply(ctx.apply())
     fill(NObjApply(ref, apply), ctx)
   }
-  
+
+  /*
   override def visitDef(ctx: GrammarParser.DefContext) = {
     val ident = ctx.ID.getText;
     val expr = visitExpression(ctx.expression());
     fill(NDef(ident, expr), ctx)
   }
+  */
   
   override def visitRef(ctx: GrammarParser.RefContext) = {
     val ident = ctx.ID.getText

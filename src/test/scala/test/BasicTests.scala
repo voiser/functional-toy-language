@@ -74,7 +74,7 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert ("24" == ret.toString())
   }
-  
+
   test("binary op") {
     val code = """
       a = 1 + (2 * 3) - (4 / 2)
@@ -106,14 +106,6 @@ class BasicTests extends FunSuite {
     assert ("[4]" == ret.toString())
   }
   
-  test("Syntactic sugar for lists") {
-    val code = """
-      xs = [1, 2, 3]
-      """
-    val ret = run(code)
-    assert ("[1 2 3]" == ret.toString())
-  }
-  
   test("Dict and extend") {
     val code = """
       m = dict("Name", "John")
@@ -122,16 +114,7 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert("[Name:John, Surname:Surjohn]" == ret.toString())
   }
-  
-  test("Syntactic sugar for maps") {
-    val code = """
-      m = ["a":1, "b":2]
-      m
-      """
-    val ret = run(code)
-    assert("[b:2, a:1]" == ret.toString())
-  }
-  
+
   test("Forwards, lists and maps") {
     val code = """
       a : List[Int]
@@ -287,7 +270,7 @@ class BasicTests extends FunSuite {
 
   test("Continuations with anonymous functions") {
     val code = """
-      divide = { ifok, ifko, n, d => 
+      divide (ifok, ifko, n, d) = {
         if d == 0 then ifko()
         else ifok(n / d)
       }
@@ -303,7 +286,7 @@ class BasicTests extends FunSuite {
   test("Basic classes") {
     val code = """
       class Person(name Str, age Int)
-      nameof = { x Person => x.name }
+      nameof (x Person) = x.name
       me = Person("David", 34)
       nameof(me)
       """

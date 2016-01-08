@@ -53,12 +53,6 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitFnargpair(GrammarParser.FnargpairContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link GrammarParser#def}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitDef(GrammarParser.DefContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link GrammarParser#apply}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

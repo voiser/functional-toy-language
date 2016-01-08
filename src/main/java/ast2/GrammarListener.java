@@ -78,16 +78,6 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitFnargpair(GrammarParser.FnargpairContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link GrammarParser#def}.
-	 * @param ctx the parse tree
-	 */
-	void enterDef(GrammarParser.DefContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link GrammarParser#def}.
-	 * @param ctx the parse tree
-	 */
-	void exitDef(GrammarParser.DefContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link GrammarParser#apply}.
 	 * @param ctx the parse tree
 	 */

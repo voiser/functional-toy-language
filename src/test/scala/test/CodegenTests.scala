@@ -53,11 +53,9 @@ class CodegenTests extends FunSuite {
   /*
   test("Intermediate") { // manual test
     val code = """
-      class Person(name Str, age a)
-
-      nameof = { x Person => x.name }
-
-      nameof(Person("David", 33))
+      a(b, c) = { x => x + b + c }
+      z = a(1, 2)
+      z(1)
       """
     val res = intermediate(code)
     println("matches = " + res)
