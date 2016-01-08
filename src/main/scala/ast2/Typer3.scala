@@ -496,14 +496,13 @@ object Typer3 {
        * 
        *   apply("[type name of x].f", x, a, b, c)
        */
-      case x @ NObjApply(z @ NRef(rname), y @ NApply(fname, params)) =>
-        val basetype = env.get(rname) match {
-          case None => throw new TypeException("Can't find '" + rname + "' in the environment", n, trace)
-          case Some(typescheme) => typescheme.tpe match {
-            case Tycon(tname, _) => tname 
-            case x @ _ => 
-              throw new TypeException("Can't make a object-style function call on " + x.repr, n, trac("When typing an object-style function call"))
-          }
+      case x @ NObjApply(z , y @ NApply(fname, params)) =>
+        val t1 = gen.get()
+        val s2 = tp(env, z, t1, s)
+        val basetype = s2(t1) match {
+          case Tycon(tname, _) => tname
+          case x @ _ =>
+            throw new TypeException("Can't make a object-style function call on " + x.repr, n, trac("When typing an object-style function call"))
         }
         val realfname = basetype + "$" + fname
         val node = NApply(realfname, z :: params)
@@ -512,7 +511,7 @@ object Typer3 {
         y.isRecursive = node.isRecursive
         y.resolvedType = node.resolvedType
         s1
-        
+
       /*
        * 'If' expression
        * 
@@ -624,10 +623,9 @@ object Typer3 {
        *
        */
       case z @ NField(owner, field) =>
-        val obj = env.get(owner) match {
-          case None => throw new TypeException("Can't find '" + owner + "' in the environment", n, trace)
-          case Some(ts) => ts.tpe
-        }
+        val o = gen.get()
+        val s1 = tp(env, owner, o, s)
+        val obj = s1(o)
         val className = obj match {
           case Tycon(name, _) => name
           case _ => throw new TypeException("Accessing a field of an unknown type instance", n, trace)
@@ -643,7 +641,7 @@ object Typer3 {
         val ss = unify(ctor.out, obj, emptySubst, n)
         val f = klass.fields.find(_.name == field) match {
           case None => throw new TypeException("Field " + field + " not found in class " + className, n, trace)
-          case Some(f) => f
+          case Some(f2) => f2
         }
         val fieldty = ss(f.ty)
         z.klass = klass

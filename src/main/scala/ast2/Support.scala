@@ -81,7 +81,7 @@ case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
 case class NForward(name: String, tydef: GTy) extends Node
 case class NClass(name: String, params: List[(String, GTy)], is: List[GTy]) extends Node
 case class NInstantiation(className: String, params: List[Node]) extends Node
-case class NField(owner: String, field: String) extends Node {
+case class NField(owner: Node, field: String) extends Node {
   var klass : Klass = null
 }
 

@@ -16,7 +16,6 @@ expression
     : value
     | fn
     | apply
-    | objapply
     | ref
     | cond
     | '(' exp=expression ')'
@@ -27,7 +26,8 @@ expression
     | left=expression binop=('+' | '-') right=expression
     | klass
     | instantiation
-    | objfield
+    | objapply=expression '.' apply
+    | objfield=expression '.' ID
     | defsimple=ID '=' defsimple2=expression
     | defn=ID '(' ')'                            '=' body=expression 
     | defn=ID '(' fnargpair (',' fnargpair)* ')' '=' body=expression 
@@ -51,14 +51,6 @@ fnargpair
 apply
     : ID '(' ')'
     | ID '(' expression ( ',' expression )* ')'
-    ;
-
-objapply
-    : ref '.' apply
-    ;
-
-objfield
-    : ref '.' ID
     ;
 
 ref

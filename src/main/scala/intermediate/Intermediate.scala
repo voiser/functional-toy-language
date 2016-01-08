@@ -214,13 +214,12 @@ case class Instance(
   def children = params
 }
 case class InstanceField(
-    name: String,
-    local: Int,
+    owner: CodeStep,
     classname: String,
     fieldname: String)
     extends CodeStep {
-  def repr(d: Int) = margin(d) + "InstanceField " + local + " " + name + " " + classname + " " + fieldname
-  def children = List()
+  def repr(d: Int) = margin(d) + "InstanceField " + classname + " " + fieldname + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
+  def children = List(owner)
 }
 object Intermediate {
   
@@ -411,10 +410,8 @@ object Intermediate {
       }
 
     case x @ NField(owner, fname) =>
-      findlocal(owner, allLocals) match {
-        case None => throw new RuntimeException("This is a compiler bug")
-        case Some((name, _, i)) => InstanceField(name, i, x.klass.fullname, fname)
-      }
+      val o = translate(unit, function, allLocals, externs, captures, owner)
+      InstanceField(o, x.klass.fullname, fname)
 
     case _ => Nop()
   }

@@ -88,26 +88,6 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitApply(GrammarParser.ApplyContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link GrammarParser#objapply}.
-	 * @param ctx the parse tree
-	 */
-	void enterObjapply(GrammarParser.ObjapplyContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link GrammarParser#objapply}.
-	 * @param ctx the parse tree
-	 */
-	void exitObjapply(GrammarParser.ObjapplyContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link GrammarParser#objfield}.
-	 * @param ctx the parse tree
-	 */
-	void enterObjfield(GrammarParser.ObjfieldContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link GrammarParser#objfield}.
-	 * @param ctx the parse tree
-	 */
-	void exitObjfield(GrammarParser.ObjfieldContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link GrammarParser#ref}.
 	 * @param ctx the parse tree
 	 */

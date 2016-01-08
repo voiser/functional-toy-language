@@ -59,6 +59,16 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
       val ident = ctx.defn.getText
       fill(NDef(ident, thefn), ctx)
     }
+    else if (ctx.objfield != null) {
+      val owner = visitExpression(ctx.objfield)
+      val field = ctx.ID().getText
+      fill(new NField(owner, field), ctx)
+    }
+    else if (ctx.objapply != null) {
+      val owner = visitExpression(ctx.objapply)
+      val apply = visitApply(ctx.apply())
+      fill(NObjApply(owner, apply), ctx)
+    }
     else visitChildren(ctx)
   }
   
@@ -86,12 +96,12 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     val params= ctx.expression().asScala.toList map visitExpression
     fill(NApply(fname, params), ctx)
   }
-  
+
+  /*
   override def visitObjapply(ctx: GrammarParser.ObjapplyContext) = {
-    val ref = visitRef(ctx.ref())
-    val apply = visitApply(ctx.apply())
-    fill(NObjApply(ref, apply), ctx)
+
   }
+  */
 
   override def visitRef(ctx: GrammarParser.RefContext) = {
     val ident = ctx.ID.getText
@@ -186,10 +196,12 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     fill(NInstantiation(className, params), ctx)
   }
 
+  /*
   override def visitObjfield(ctx: GrammarParser.ObjfieldContext) = {
     val name = ctx.ref().ID().getText
     val field = ctx.ID().getText
     fill(new NField(name, field), ctx)
   }
+  */
 }
 

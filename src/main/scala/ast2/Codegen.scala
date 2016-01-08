@@ -460,9 +460,8 @@ object Codegen {
         stack.pop
         stack.pop
 
-      case InstanceField(name, local, classname, fieldname) =>
-        mv.visitVarInsn(ALOAD, local);
-        stack.push
+      case InstanceField(owner, classname, fieldname) =>
+        add(module, uf, mv, owner, stack)
         mv.visitTypeInsn(CHECKCAST, classname);
         mv.visitFieldInsn(GETFIELD, classname, fieldname, JTHING);
         stack.push

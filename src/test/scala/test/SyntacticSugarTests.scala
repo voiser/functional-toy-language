@@ -93,4 +93,23 @@ class SyntacticSugarTests extends FunSuite {
     val ret = run(code)
     assert ("2" == ret.toString())
   }
+
+  test("Object style calls") {
+    val code = """
+      [[1, 2, 3].size(), size([1, 2, 3])]
+      """
+    val ret = run(code)
+    assert ("[3 3]" == ret.toString())
+  }
+
+  test("Object fields") {
+    val code = """
+      class Age(years Int)
+      class Person(name Str, age Age)
+      Person("David", Age(34)).age.years
+      """
+    val ret = run(code)
+    assert ("34" == ret.toString())
+  }
+
 }

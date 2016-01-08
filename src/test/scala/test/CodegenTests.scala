@@ -53,9 +53,7 @@ class CodegenTests extends FunSuite {
   /*
   test("Intermediate") { // manual test
     val code = """
-      a(b, c) = { x => x + b + c }
-      z = a(1, 2)
-      z(1)
+      [[1, 2, 3].size(), size([1, 2, 3])]
       """
     val res = intermediate(code)
     println("matches = " + res)
