@@ -37,7 +37,7 @@ class BasicTests extends FunSuite {
       cons(1, list(2))
       """
     val ret = run(code)
-    assert ("[1 2]" == ret.toString())
+    assert ("[1, 2]" == ret.toString())
   }
   
   test("Forward definition") {
@@ -166,7 +166,7 @@ class BasicTests extends FunSuite {
       equalsToOne(2)
       """
     val ret = run(code)
-    assert("False" == ret.toString())
+    assert("false" == ret.toString())
   }
   
   test("Hop captures") {
@@ -265,7 +265,7 @@ class BasicTests extends FunSuite {
       [ divide1(10, 2), divide1(10, 0) ]
       """
     val ret = run(code)
-    assert("[OK KO]" == ret.toString())
+    assert("[OK, KO]" == ret.toString())
   }
 
   test("Continuations with anonymous functions") {
@@ -280,6 +280,6 @@ class BasicTests extends FunSuite {
       [ divide1(10, 2), divide1(10, 0) ]
       """
     val ret = run(code)
-    assert("[OK KO]" == ret.toString())
+    assert("[OK, KO]" == ret.toString())
   }
 }

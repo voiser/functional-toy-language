@@ -27,7 +27,7 @@ class SyntacticSugarTests extends FunSuite {
       xs = [1, 2, 3]
       """
     val ret = run(code)
-    assert ("[1 2 3]" == ret.toString())
+    assert ("[1, 2, 3]" == ret.toString())
   }
 
   test("Maps") {
@@ -99,7 +99,7 @@ class SyntacticSugarTests extends FunSuite {
       [[1, 2, 3].size(), size([1, 2, 3])]
       """
     val ret = run(code)
-    assert ("[3 3]" == ret.toString())
+    assert ("[3, 3]" == ret.toString())
   }
 
   test("Object fields") {

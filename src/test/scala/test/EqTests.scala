@@ -24,7 +24,7 @@ class EqTests extends FunSuite {
       cons(eq(1, 2), cons(eq(1, 1), nil))
       """
     val ret = run(code)
-    assert ("[False True]" == ret.toString())
+    assert ("[false, true]" == ret.toString())
   }
   
   test("Float as Eq") {
@@ -32,7 +32,7 @@ class EqTests extends FunSuite {
       cons(eq(1.0, 2.0), cons(eq(1.0, 1.0), nil))
       """
     val ret = run(code)
-    assert ("[False True]" == ret.toString())
+    assert ("[false, true]" == ret.toString())
   }
   
   test("String as Eq") {
@@ -40,7 +40,7 @@ class EqTests extends FunSuite {
       cons(eq("a", "b"), cons(eq("c", "c"), nil))
       """
     val ret = run(code)
-    assert ("[False True]" == ret.toString())
+    assert ("[false, true]" == ret.toString())
 
   }
 
@@ -49,7 +49,7 @@ class EqTests extends FunSuite {
       cons(eq(true, false), cons(eq(true, true), nil))
       """
     val ret = run(code)
-    assert ("[False True]" == ret.toString())
+    assert ("[false, true]" == ret.toString())
   }
 
 }

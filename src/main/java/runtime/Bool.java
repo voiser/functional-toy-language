@@ -6,7 +6,7 @@ public class Bool extends Thing {
 
 	@Override
 	public String toString() {
-		return b ? "True" : "False";
+		return b ? "true" : "false";
 	}
 
     public Bool(boolean b) {

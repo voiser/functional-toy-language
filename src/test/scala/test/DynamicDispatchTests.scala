@@ -30,7 +30,7 @@ class DynamicDispatchTests extends FunSuite {
       [ mysize(a), mysize(b) ]
       """
     val ret = run(code)
-    assert ("[2 1]" == ret.toString())
+    assert ("[2, 1]" == ret.toString())
   }
 
   test ("Static dispatch with the typechecker help") { 
@@ -40,7 +40,7 @@ class DynamicDispatchTests extends FunSuite {
       [ size(a), size(b) ]
       """
     val ret = run(code)
-    assert ("[2 1]" == ret.toString())
+    assert ("[2, 1]" == ret.toString())
   }
 
   test ("Static dispatch with the typechecker help 2") { 
@@ -71,7 +71,6 @@ class DynamicDispatchTests extends FunSuite {
       [ mysize(a), mysize(b) ]
       """
     val ret = run(code)
-    assert ("[2 1]" == ret.toString())
+    assert ("[2, 1]" == ret.toString())
   }
-
 }

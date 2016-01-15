@@ -16,7 +16,7 @@ public class List extends Thing {
 	}
 	
 	public String repr() {
-		return head + (tail instanceof Nil ? "" : " " + tail.repr());
+		return head + (tail instanceof Nil ? "" : ", " + tail.repr());
 	}
 	
 	@Override

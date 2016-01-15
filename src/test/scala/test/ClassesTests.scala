@@ -42,16 +42,12 @@ class ClassesTests extends FunSuite {
   test("Class as Eq") {
     val code = """
       class Box(content a+Eq) is Eq {
-
         eq(a this, b this) = a.content == b.content
-
       }
-
       [Box(9) == Box(1), Box("lala") == Box("lele"), Box(false) == Box(true), Box(9) == Box(9), Box("lala") == Box("lala"), Box(false) == Box(false)]
-
       """
     val ret = run(code)
-    assert("[False False False True True True]" == ret.toString())
+    assert("[false, false, false, true, true, true]" == ret.toString())
   }
 }
 

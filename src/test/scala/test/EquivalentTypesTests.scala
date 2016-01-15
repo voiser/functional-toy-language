@@ -31,12 +31,28 @@ class EquivalentTypesTests extends FunSuite {
   def unifies(t1: String, t2: String) : Boolean = unifies(Main.parseType(t1), Main.parseType(t2))
 
   def unifies(t1: Ty, t2: Ty) : Boolean = {
-    val s = Typer3.unify(t1, t2, Typer3.emptySubst, null)(new TyvarGenerator("a"), List())
-    s(t1).repr == t2.repr
+    try {
+      val s = Typer3.unify(t1, t2, Typer3.emptySubst, null)(new TyvarGenerator("a"), List())
+      s(t1).repr == t2.repr
+    } catch {
+      case x : TypeException => false
+    }
   }
 
   test("Unify a+Set[y] to x+Set[b]") {
-    unifies("a+Set[y]", "x+Set[b]")
+    assert(unifies("a+Set[y]", "x+Set[b]"))
+  }
+
+  test("Unify a+Set[y]+Eq to x+Set[b]") {
+    assert(!unifies("a+Set[y]+Eq", "x+Set[b]"))
+  }
+
+  test("Unify a+Eq to x+Set[b]") {
+    assert(!unifies("a+Eq", "x+Set[b]"))
+  }
+
+  test("Unify a to x+Set[b]") {
+    assert(unifies("a", "x+Set[b]"))
   }
 
   test("Int vs Int") {
