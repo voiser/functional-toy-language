@@ -282,15 +282,4 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert("[OK KO]" == ret.toString())
   }
-
-  test("Basic classes") {
-    val code = """
-      class Person(name Str, age Int)
-      nameof (x Person) = x.name
-      me = Person("David", 34)
-      nameof(me)
-      """
-    val ret = run(code)
-    assert("David" == ret.toString())
-  }
 }

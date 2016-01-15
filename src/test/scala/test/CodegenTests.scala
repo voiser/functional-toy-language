@@ -41,8 +41,9 @@ class CodegenTests extends FunSuite {
     ty
   }
 
+
   def matches(in: Any, exp: String) = {
-    val exp2 = "^" + (exp.replace("(", "\\(").replace(")", "\\)")) + "$"
+    val exp2 = "^" + exp.replace("(", "\\(").replace(")", "\\)") + "$"
     val r = exp.r.findFirstIn(in.toString)
     r match {
       case Some(_) => true
@@ -53,7 +54,7 @@ class CodegenTests extends FunSuite {
   /*
   test("Intermediate") { // manual test
     val code = """
-      [[1, 2, 3].size(), size([1, 2, 3])]
+      false
       """
     val res = intermediate(code)
     println("matches = " + res)

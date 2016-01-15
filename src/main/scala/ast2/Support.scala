@@ -49,6 +49,7 @@ case class NBlock(children: List[Node]) extends Node
 case class NInt(i: Int) extends Node
 case class NFloat(f: Float) extends Node
 case class NString(s: String) extends Node
+case class NBool(b: Boolean) extends Node
 case class NDef(name: String, value: Node) extends Node
 case class NRef(override val name: String) extends NodeRef(name) {
   var over: Option[Over] = None
@@ -65,6 +66,7 @@ case class NFn(params: List[NFnArg], value: NBlock) extends Node {
   }
   def hasTypedArgs = typedArgs.length > 0
   var fwdty : Tyfn = null
+  var isOverride : (Klass, String, Ty) = null
 }
 case class NApply(name: String, params: List[Node]) extends Node {
   // add(1, 1) ---> name = add, realname = add$a
@@ -79,7 +81,7 @@ case class NApply(name: String, params: List[Node]) extends Node {
 case class NObjApply(callee: Node, apply: NApply) extends Node
 case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
 case class NForward(name: String, tydef: GTy) extends Node
-case class NClass(name: String, params: List[(String, GTy)], is: List[GTy]) extends Node
+case class NClass(name: String, params: List[(String, GTy)], is: List[GTy], block: NBlock) extends Node
 case class NInstantiation(className: String, params: List[Node]) extends Node
 case class NField(owner: Node, field: String) extends Node {
   var klass : Klass = null
@@ -87,10 +89,10 @@ case class NField(owner: Node, field: String) extends Node {
 
 
 /**
-  * A type class and its members
-  */
+ * A type class and its members
+ */
 case class Field(name: String, ty: Ty)
-class Klass(val name: String, val constructor: TypeScheme) {
+class Klass(val name: String, val constructor: TypeScheme, val isas: List[Ty]) {
   val fields = scala.collection.mutable.MutableList[Field]()
   var namespace : String = null
   var modulename : String = null
@@ -101,6 +103,8 @@ class Klass(val name: String, val constructor: TypeScheme) {
   def localname = (if (namespace == null) "" else namespace + "$") + name
   def fullname = modulename + "/" + localname
 }
+class Interface(val name: String, val requirements : List[(String, Tyfn)])
+
 
 
 /**
@@ -135,6 +139,9 @@ case class Tycon(name: String, types: List[Ty]) extends Ty {
 case class Tyvar(name: String, restrictions: List[Restriction]) extends Ty {
   override def repr = name + restrictions.map{_.repr}.mkString("")
 }
+object Tyvar {
+  def wildard = Tyvar("*", List())
+}
 object Tycon {
   def apply(name: String) : Tycon = Tycon(name, List())
 }
@@ -155,9 +162,14 @@ class CodegenException(m: String) extends Exception(m)
 class TyvarGenerator(prefix: String) {
   var n = 0
   
-  def get() = {
+  def get() : Tyvar = {
     n = n + 1
     Tyvar(prefix + n, List())
+  }
+
+  def get(s: String) = {
+    n = n + 1
+    Tyvar(s + n, List())
   }
   
   def get(t: Tyvar) = {
@@ -207,14 +219,10 @@ case class TypeScheme(tyvars: List[Tyvar], tpe: Ty) {
 case class Function(function: NFn, captures: List[NodeRef]) {
   override def toString() = "Function(" + function.defname + ", " + captures + ")"
 }
-
 case class Call(function: NFn, calls: List[String])
-
 case class Extern(function: NFn, symbols: List[Over]) {
   override def toString() = "Extern(" + function.defname + ", " + symbols + ")"
 }
-
-
 case class Type(fullname: String, ty: Tycon)
 case class Over(name: String, fullname: String, ts: TypeScheme) {
   override def toString() = "Over(" + fullname + " : " + ts.tpe.repr + ")"
@@ -237,8 +245,29 @@ class Env(var id: String, val parent: Env, val introducedBy: Node) {
   val isas = scala.collection.mutable.Map[String, (Tycon, List[Ty])]()
   val overrides = scala.collection.mutable.Map[String, List[Over]]()
   val classes = scala.collection.mutable.Map[String, Klass]()
-  
+  val interfaces = scala.collection.mutable.Map[String, Interface]()
+
+  def root: Env = if (parent == null) this else parent.root
+
   def allNames = names ++ (if (parent != null) parent.names else Map())
+
+  def allInterfaces : List[(String, Interface)] = interfaces.toList ++ (if (parent != null) parent.allInterfaces else List())
+
+  def interfaceFor(name: String) = allInterfaces.map { i =>
+      i._2.requirements.find { r => r._1 == name } match {
+        case Some(x) => (true, i, x)
+        case None => (false, null, null)
+      }
+    }.find(_._1).map(p => (p._2, p._3))
+
+  def putInterface(i: Interface) = interfaces.put(i.name, i)
+
+  def getInterface(name: String) : Option[Interface] = interfaces.get(name) match {
+    case x : Some[Interface] => x
+    case None =>
+      if (parent != null) parent.getInterface(name)
+      else None
+  }
 
   def putClass(k: Klass) = classes.put(k.name, k)
 

@@ -1,5 +1,6 @@
 package test
 
+import ast2.Typer3.Subs
 import ast2._
 import intermediate.Intermediate
 import org.antlr.v4.runtime.{ANTLRInputStream, CommonTokenStream}
@@ -26,6 +27,17 @@ class EquivalentTypesTests extends FunSuite {
   }
 
   def equivalent(t1: String, t2: String) : Boolean = equivalent(Main.parseType(t1), Main.parseType(t2))
+
+  def unifies(t1: String, t2: String) : Boolean = unifies(Main.parseType(t1), Main.parseType(t2))
+
+  def unifies(t1: Ty, t2: Ty) : Boolean = {
+    val s = Typer3.unify(t1, t2, Typer3.emptySubst, null)(new TyvarGenerator("a"), List())
+    s(t1).repr == t2.repr
+  }
+
+  test("Unify a+Set[y] to x+Set[b]") {
+    unifies("a+Set[y]", "x+Set[b]")
+  }
 
   test("Int vs Int") {
     assert(equivalent("Int", "Int"))
@@ -98,5 +110,4 @@ class EquivalentTypesTests extends FunSuite {
   test("a+Set[Int] vs b+Set[y]") {
     assert(!equivalent("a+Set[Int]", "b+Set[y]"))
   }
-
 }

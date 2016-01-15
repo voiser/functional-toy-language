@@ -21,13 +21,13 @@ expression
     | '(' exp=expression ')'
     | list
     | map
+    | objapply=expression '.' apply
+    | objfield=expression '.' ID
     | left=expression binop=('=='|'!=') right=expression
     | left=expression binop=('*' | '/') right=expression
     | left=expression binop=('+' | '-') right=expression
     | klass
     | instantiation
-    | objapply=expression '.' apply
-    | objfield=expression '.' ID
     | defsimple=ID '=' defsimple2=expression
     | defn=ID '(' ')'                            '=' body=expression 
     | defn=ID '(' fnargpair (',' fnargpair)* ')' '=' body=expression 
@@ -37,6 +37,8 @@ value
     : INTEGER
     | FLOAT
     | STRING
+    | boolfalse='false'
+    | booltrue='true'
     ;
 
 fn
@@ -82,7 +84,7 @@ mappair
     ;
 
 klass 
-	: 'class' CLASSID '(' (klassvar (',' klassvar)*)? ')' ('is' klassparent (',' klassparent)*)?
+	: 'class' CLASSID '(' (klassvar (',' klassvar)*)? ')' ('is' klassparent (',' klassparent)*)? ('{' block '}')?
 	;
 
 klassvar
@@ -90,7 +92,7 @@ klassvar
 	;
 
 klassparent
-	: CLASSID | ID | klassparent '[' klassparent (',' klassparent)* ']' | klassparent ',' klassparent 
+	: CLASSID | ID | klassparent '[' klassparent (',' klassparent)* ']'
 	;
 
 instantiation

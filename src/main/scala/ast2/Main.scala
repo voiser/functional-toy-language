@@ -93,6 +93,26 @@ object Main {
     t
   }
 
+  def registerInterface(cname: String, methods: List[String])(implicit env: Env) = {
+    val requirements = methods.map { m =>
+      env.get(m) match {
+        case Some(ts @ TypeScheme(_, tyfn @ Tyfn(input, output))) =>
+          val inputvars = input.collect {
+            case tv @ Tyvar(tn, tr) => tr collect {
+              case Isa(Tycon(cname, _)) => tv
+            }
+          }.flatten.distinct
+          if (inputvars.size != 1) throw new RuntimeException("What should I do in this case?")
+          val theInputType = inputvars(0)
+          val canonicFnType = Typer3.emptySubst.extend(theInputType, Tyvar.wildard)(tyfn)
+          (m, canonicFnType.asInstanceOf[Tyfn])
+        case _ => throw new RuntimeException("This is a compiler bug")
+      }
+    }
+    val inter = new Interface(cname, requirements)
+    env.putInterface(inter)
+  }
+
   /*
    * Creates the root environment which contains the most basic types and functions
    */
@@ -114,14 +134,12 @@ object Main {
     registerTy("runtime/Dict",      "Dict[k, v]", List("Set[Pair[k, v]]"))
 
     registerFn("runtime/id",        "id",         "a -> a")
-    registerFn("runtime/do_",       "do",         "(a -> b), a -> b") 
-    registerFn("runtime/True",      "true",       "Bool")
-    registerFn("runtime/False",     "false",      "Bool")
+    registerFn("runtime/do_",       "do",         "(a -> b), a -> b")
     registerFn("runtime/add",       "add",        "a+Num, a -> a")
     registerFn("runtime/sub",       "sub",        "a+Num, a -> a")
     registerFn("runtime/times",     "times",      "a+Num, a -> a")
     registerFn("runtime/div",       "div",        "a+Num, a -> a")
-    registerFn("runtime/eq_",       "eq",         "a+Eq,  a -> Bool")
+
     registerFn("runtime/oneof",     "oneof",      "a+Set[s] -> s")
     registerFn("runtime/List$size", "List$size",  "List[x] -> Int")
     registerFn("runtime/list_of",   "list",       "a -> List[a]")
@@ -130,11 +148,20 @@ object Main {
     registerFn("runtime/dict_of",   "dict",       "a, b -> Dict[a, b]")
     registerFn("runtime/extend",    "extend",     "a, b, Dict[a, b] -> Dict[a, b]")
     registerFn("runtime/typeof",    "typeof",     "a -> List[Str]")
-    
+
+    registerFn("eq", "a+Eq, a -> Bool")
+    registerOverride("runtime/Int$eq",   "eq", "Int, Int -> Bool")
+    registerOverride("runtime/Float$eq", "eq", "Float, Float -> Bool")
+    registerOverride("runtime/Str$eq",   "eq", "Str, Str -> Bool")
+    registerOverride("runtime/Bool$eq", "eq", "Bool, Bool -> Bool")
+
     registerFn("size", "a+Set[b] -> Int")
     registerOverride("runtime/List$size", "size", "List[x] -> Int")
     registerOverride("runtime/Dict$size", "size", "Dict[a, b] -> Int")
-    
+
+    registerInterface("Set", List("size"))
+    registerInterface("Eq", List("eq"))
+
     env
   }
 
@@ -248,7 +275,18 @@ object Main {
     }
   }
 
-  
+
+  /*
+   * Generates overrides
+   */
+  class stageGenerateOverrides(env: Env, code: String) extends Function1[NModule, NModule] {
+    def apply(module: NModule) = {
+      new OverGenerator(module)
+      module
+    }
+  }
+
+
   /*
    * Generates a CompilationUnit 
    */
@@ -271,8 +309,9 @@ object Main {
     val env = rootEnv
     val stages = List(
         new stageType(env, code),
-        new stageObjectStyle(env), 
-        new stageTransformFunctions(env, code))
+        new stageObjectStyle(env),
+        new stageTransformFunctions(env, code),
+        new stageGenerateOverrides(env, code))
     val module0 = stageZero(filename, code, env)
     val module = stages.foldLeft(module0) { (module, stage) => stage(module) }
     val unit = stageGenerateUnit(filename, module)
@@ -344,8 +383,9 @@ object Main {
           show0(exptrue, d+1)
           show0(expfalse, d+1)
 
-        case x @ NClass(name, params, parents) =>
+        case x @ NClass(name, params, parents, ex) =>
           rep("Class " + name)
+          show0(ex, d+1)
 
         case x @ NInstantiation(name, params) =>
           rep("new " + name)
@@ -359,9 +399,15 @@ object Main {
   }
   
   def showLine(codelines: Array[String], message: String, node: Node) = {
-    println("At " + node.filename + ":" + node.line + " - " + message)
-    println(codelines(node.line - 1))
-    println(" " * node.column + "^") 
+    if (node != null) {
+      println("At " + node.filename + ":" + node.line + " - ")
+      println("    " + message)
+      println(codelines(node.line - 1))
+      println(" " * node.column + "^")
+    }
+    else {
+      println("    " + message)
+    }
   }
   
   def showException(e: TypeException, code: String) = {
@@ -372,6 +418,5 @@ object Main {
       showLine(codelines, x.message, x.node)
     }
     println()
-    throw e
   }
 }

@@ -2,13 +2,15 @@ package ast2
 
 import java.io.FileOutputStream
 import java.io.File
+import java.net.{URL, URLClassLoader}
 
 /**
  * @author david
  */
 
-class VolatileClassLoader(parent: ClassLoader) extends ClassLoader {
-  
+class VolatileClassLoader(urls: Array[URL]) extends ClassLoader {
+
+  val default = URLClassLoader.newInstance(urls, this)
   val classes = scala.collection.mutable.Map[String, Class[_]]()
   
   def add(name: String, bytes: Array[Byte]) {
@@ -18,7 +20,7 @@ class VolatileClassLoader(parent: ClassLoader) extends ClassLoader {
 
   override def loadClass(name: String) : Class[_] = {
     classes.get(name) match {
-      case None => parent.loadClass(name)
+      case None => default.loadClass(name)
       case Some(klass) => klass
     }
   }
@@ -26,8 +28,17 @@ class VolatileClassLoader(parent: ClassLoader) extends ClassLoader {
 
 
 class Runtime {
-  
-  val x = new VolatileClassLoader(this.getClass.getClassLoader)
+
+  val parent = this.getClass.getClassLoader
+
+  val urls = if (parent.isInstanceOf[URLClassLoader]) {
+    parent.asInstanceOf[URLClassLoader].getURLs
+  }
+  else {
+    throw new RuntimeException("Can't handle non-URL class loaders")
+  }
+
+  val x = new VolatileClassLoader(urls)
   
   def register(pack: String, name: String, bytes: Array[Byte]) {
     val destination = new File("/tmp", pack)

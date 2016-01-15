@@ -149,6 +149,12 @@ case class SString(
   def repr(d: Int) = margin(d) + "SString " + s
   def children = List()
 }
+case class SBool(
+    b: Boolean)
+    extends CodeStep {
+  def repr(d: Int) = margin(d) + "SBool " + b
+  def children = List()
+}
 case class CallLocal(
     index: Int,
     name: String, 
@@ -271,8 +277,10 @@ object Intermediate {
     val captures = function.captures.map { x => CreateCapture(x.name, codegenType(x.ty)) }
     val externs = function.externs.map { x =>
       val (node, name, symbol, ty) = x
-      CreateExtern(sym(symbol), symbol, codegenType(ty))
-    }
+      val s = sym(symbol)
+      if (s == function.name) null
+      else CreateExtern(s, symbol, codegenType(ty))
+    }.filterNot(_ == null)
     val locals = function.locals.map { x => CreateLocal(x._1, x._3, codegenType(x._2.ty)) }
     val allLocals = (function.locals ++ function.params).distinct
     
@@ -329,6 +337,7 @@ object Intermediate {
     case NDef(name, v : NString) => Nop()
     case NDef(name, v : NRef) => Nop()
     case NDef(name, v : NFn) => Nop()
+    case NDef(name, v : NBool) => Nop()
     case x : NForward => Nop()
     
     case NDef(name, v) =>
@@ -352,6 +361,7 @@ object Intermediate {
     case NInt(v) => SInt(v)
     case NFloat(f) => SFloat(f)
     case NString(s) => SString(s)
+    case NBool(b) => SBool(b)
 
     case x @ NApply(fname, args) =>
       val params = args.map { x => translate(unit, function, allLocals, externs, captures, x) }

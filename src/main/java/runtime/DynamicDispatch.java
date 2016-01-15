@@ -15,20 +15,25 @@ public class DynamicDispatch {
 				key = key + ";";
 			}
 		}
-		
+
+        // System.out.println("Dynamic key = " + key);
+
 		String chosen = null;
 		
 		for (int i = 0; i < nOptions; i++) {
+            // System.out.println("  checking against " + types[i]);
 			if (key.equals(types[i])) {
 				chosen = options[i];
 			}
 		}
-		
+
+        // System.out.println("  chosen = " + chosen);
+
 		if (chosen == null) { 
 			throw new RuntimeException("Can't dispatch");
 		}
-		
-		try {
+
+        try {
 			Class<?> k = Class.forName(chosen);
 			Class ak[] = new Class[nArgs];
 			for (int i = 0; i < nArgs; i++) {

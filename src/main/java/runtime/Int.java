@@ -1,6 +1,6 @@
 package runtime;
 
-public class Int extends Thing implements Num, Eq {
+public class Int extends Thing implements Num {
 
     protected int i;
     
@@ -24,12 +24,6 @@ public class Int extends Thing implements Num, Eq {
     }
     
     @Override
-    public Thing eq(Eq other) {
-    	boolean equals = i == ((Int)other).i;
-    	return equals ? new True() : new False();
-    }
-    
-    @Override
     public Num div(Num other) {
         return new Int(i / ((Int)other).i);
     }
@@ -37,5 +31,14 @@ public class Int extends Thing implements Num, Eq {
     @Override
     public String toString() {
         return "" + i;
-    }    
+    }
+
+    public static class eq extends Func {
+        @Override
+        public Thing apply2(Thing a, Thing b) {
+            Int s1 = (Int)a;
+            Int s2 = (Int)b;
+            return new Bool(s1.i == s2.i);
+        }
+    }
 }

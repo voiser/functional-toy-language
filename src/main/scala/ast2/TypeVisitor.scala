@@ -33,14 +33,17 @@ class TypeVisitor extends TypegrammarBaseVisitor[GTy] {
   
   override def visitVar(ctx: TypegrammarParser.VarContext) = {
     val name = ctx.VAR().getText
+    val ret = ctx.restriction.asScala.toList map visitRestriction
     val res = 
       if (ctx.restriction.size() > 0) {
         restrictions.get(name) match {
           case None => 
-            val ret = ctx.restriction.asScala.toList map visitRestriction
             restrictions.put(name, ret)
             ret
-          case Some(x) => throw new TypegrammarException("Re-defining restrictions for type " + name)
+          case Some(x) if x == ret =>
+            ret
+          case Some(x) if x != ret =>
+            throw new TypegrammarException("Re-defining restrictions for type " + name)
         }
       }
       else {

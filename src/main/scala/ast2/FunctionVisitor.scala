@@ -46,6 +46,12 @@ class Visitor {
   def visitNClass(n: NClass) {
   }
 
+  def visitNInstantiation(n: NInstantiation) {
+  }
+
+  def visitNField(n: NField) {
+  }
+
   def visit(n: NFn): Unit = {
     visitNFn(n)
     visit(n.value)
@@ -98,6 +104,17 @@ class Visitor {
 
   def visit(n: NClass): Unit = {
     visitNClass(n)
+    visit(n.block)
+  }
+
+  def visit(n: NInstantiation): Unit = {
+    visitNInstantiation(n)
+    n.params.foreach { x => visit(x) }
+  }
+
+  def visit(n: NField): Unit = {
+    visitNField(n)
+    visit(n.owner)
   }
 
   def visit(n: Node) : Unit = {
@@ -135,7 +152,13 @@ class Visitor {
 
       case x : NClass =>
         visit(x)
-        
+
+      case x : NInstantiation =>
+        visit(x)
+
+      case x : NField =>
+        visit(x)
+
       case _ =>    
     }
   }
@@ -157,6 +180,11 @@ class FunctionNamerVisitor2(name: String) extends Visitor {
   override def visit(n: NDef) {
     val newName = if (name != null) name + "$" + n.name else n.name
     new FunctionNamerVisitor2(newName).visit(n.value)
+  }
+
+  override def visit(n: NClass) {
+    val newName = if (name != null) name + "$" + n.name else n.name
+    new FunctionNamerVisitor2(newName).visit(n.block)
   }
 }
 
@@ -332,9 +360,15 @@ class OverVisitor(root: NFn) extends Visitor {
   }
   
   override def visit(n: NDef, r: NRef): Unit = {
-    pending.put(n.name, (r, n.env.getOverrides(r.name)))
+    r.env.root.getOverrides(r.name) match {
+      case List(x) => // it's an imported symbol
+        functions += x
+
+      case _ =>
+        pending.put(n.name, (r, n.env.getOverrides(r.name)))
+    }
   }
-  
+
   override def visitNRef(r: NRef) {
     r.env.getOverrides(r.name) match {
       case List() => // it's a local reference
@@ -355,11 +389,16 @@ class OverVisitor(root: NFn) extends Visitor {
         pending.get(n.name) match {
           case Some((ref, overs)) =>
             lookupOverride(n.resolvedType, ref.name, n, ref.env.getOverrides(ref.name)) match {
-              case List(o) => 
+              case List(o) =>
                 functions += o
                 n.over = Some(o)
                 
               case List() => // the function references a local function
+/*
+              case x : List[Over] => // Several options: this means a dynamic dispatch
+                x.foreach { functions += _ }
+                n.dynamicOver = x
+*/
             }
           case None => // the function is local
         }
@@ -404,6 +443,25 @@ class ClassExtractor(module: NModule) extends Visitor {
     klass match {
       case None => throw new TypeException("This is a compiler bug", n, List())
       case Some(k) => found.+=(k)
+    }
+  }
+}
+
+
+/**
+  * Gives a generated name to all anonymous functions
+  */
+class OverGenerator(module: NModule) extends Visitor {
+
+  visit(module.main.value)
+
+  override def visitNFn(n: NFn): Unit = {
+    n.isOverride match {
+      case (k, nn, f) =>
+        val fullname = module.name + "/" + n.name
+        Main.registerOverride(fullname, nn, f.repr)(n.env.root)
+
+      case null =>
     }
   }
 }

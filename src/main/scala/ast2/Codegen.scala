@@ -43,7 +43,8 @@ class Stack {
  * Java code generator
  */
 object Codegen {
-  
+
+  val BOOL   = "runtime/Bool"
   val TRUE   = "runtime/True"
   val FUNC   = "runtime/Func"
   val THING  = "runtime/Thing"
@@ -316,7 +317,18 @@ object Codegen {
         mv.visitMethodInsn(INVOKESPECIAL, "runtime/Str", "<init>", "(Ljava/lang/String;)V", false)
         stack.pop
         stack.pop
-        
+
+      case SBool(b) =>
+        mv.visitTypeInsn(NEW, "runtime/Bool")
+        stack.push
+        mv.visitInsn(DUP);
+        stack.push
+        mv.visitLdcInsn(b)
+        stack.push
+        mv.visitMethodInsn(INVOKESPECIAL, "runtime/Bool", "<init>", "(Z)V", false)
+        stack.pop
+        stack.pop
+
       case Local(i) =>
         mv.visitVarInsn(ALOAD, i);
         stack.push
@@ -424,7 +436,8 @@ object Codegen {
             stack.push
             mv.visitLdcInsn(new Integer(i))
             stack.push
-            mv.visitVarInsn(ALOAD, i + 1)
+            add(module, uf, mv, args(i), stack)
+            //mv.visitVarInsn(ALOAD, i + 1)
             stack.push
             mv.visitInsn(AASTORE);
             stack pop 3
@@ -436,7 +449,8 @@ object Codegen {
       
       case SIf(cond, extrue, exfalse) =>
         add(module, uf, mv, cond, stack)
-        mv.visitTypeInsn(INSTANCEOF, TRUE)
+        mv.visitTypeInsn(CHECKCAST, BOOL);
+        mv.visitFieldInsn(GETFIELD, BOOL, "b", "Z");
         val l1 = new Label()
         mv.visitJumpInsn(IFEQ, l1)
         add(module, uf, mv, extrue, stack)

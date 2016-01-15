@@ -1,6 +1,6 @@
 package runtime;
 
-public class Str extends Thing implements Eq {
+public class Str extends Thing {
 
 	protected char delim;
     protected String s;
@@ -13,13 +13,16 @@ public class Str extends Thing implements Eq {
     	this.delim = s.charAt(0);
         this.s = s.substring(1, s.length() - 1);
     }
-    
-    @Override
-    public Thing eq(Eq other) {
-    	boolean equals = s.equals(((Str)other).s);
-    	return equals ? new True() : new False();
+
+    public static class eq extends Func {
+        @Override
+        public Thing apply2(Thing a, Thing b) {
+            Str s1 = (Str)a;
+            Str s2 = (Str)b;
+            return new Bool(s1.s.equals(s2.s));
+        }
     }
-    
+
     @Override
     public String toString() {
         return s;

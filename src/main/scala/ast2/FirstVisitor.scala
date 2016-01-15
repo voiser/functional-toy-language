@@ -19,7 +19,7 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     n
   }
 
-  def getTy(ty: GrammarParser.TydefContext) = {
+  def getTy(ty: ParserRuleContext) = {
     val lexer = new TypegrammarLexer(new ANTLRInputStream(ty.getText))
     val parser = new TypegrammarParser(new CommonTokenStream(lexer))
     val cst = parser.ty()
@@ -86,6 +86,12 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     else if (ctx.STRING != null) {
       fill(NString(ctx.STRING.getText), ctx)
     }
+    else if (ctx.boolfalse != null) {
+      fill(NBool(false), ctx)
+    }
+    else if (ctx.booltrue != null) {
+      fill(NBool(true), ctx)
+    }
     else {
       throw new ParseException("Can't parse value " + ctx)
     }
@@ -96,12 +102,6 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     val params= ctx.expression().asScala.toList map visitExpression
     fill(NApply(fname, params), ctx)
   }
-
-  /*
-  override def visitObjapply(ctx: GrammarParser.ObjapplyContext) = {
-
-  }
-  */
 
   override def visitRef(ctx: GrammarParser.RefContext) = {
     val ident = ctx.ID.getText
@@ -187,7 +187,11 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     }
     val name = ctx.CLASSID().getText
     val typarams = ctx.klassvar.asScala.toList map getKlassvar
-    fill(NClass(name, typarams, List()), ctx)
+    val block =
+      if (ctx.block() != null) visitBlock(ctx.block())
+      else fill(NBlock(List()), ctx)
+    val supers = ctx.klassparent().asScala.toList.map(getTy)
+    fill(NClass(name, typarams, supers, block), ctx)
   }
 
   override def visitInstantiation(ctx: GrammarParser.InstantiationContext) = {
@@ -195,13 +199,5 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     val params = ctx.expression().asScala.toList map visitExpression
     fill(NInstantiation(className, params), ctx)
   }
-
-  /*
-  override def visitObjfield(ctx: GrammarParser.ObjfieldContext) = {
-    val name = ctx.ref().ID().getText
-    val field = ctx.ID().getText
-    fill(new NField(name, field), ctx)
-  }
-  */
 }
 
