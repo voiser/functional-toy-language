@@ -411,6 +411,9 @@ class OverVisitor(root: NFn) extends Visitor {
 }
 
 
+/*
+ * Sets all class names
+ */
 class ClassNamer(module: String, name: String) extends Visitor {
 
   override def visit(x: NClass) {
@@ -430,6 +433,9 @@ class ClassNamer(module: String, name: String) extends Visitor {
 }
 
 
+/*
+ * Extracts all classes in a module
+ */
 class ClassExtractor(module: NModule) extends Visitor {
 
   val found = scala.collection.mutable.MutableList[Klass]()
@@ -449,8 +455,8 @@ class ClassExtractor(module: NModule) extends Visitor {
 
 
 /**
-  * Gives a generated name to all anonymous functions
-  */
+ * Registers overrides corresponding to methods defined for a particular class
+ */
 class OverGenerator(module: NModule) extends Visitor {
 
   visit(module.main.value)
@@ -463,5 +469,40 @@ class OverGenerator(module: NModule) extends Visitor {
 
       case null =>
     }
+  }
+}
+
+
+/*
+ * Checks that a class defines all methods from its interfaces
+ */
+class InterfaceChecker(klass: Klass) extends Visitor {
+
+  val env = klass.definedat.env
+  klass.isas.foreach { isa =>
+    env.getInterface(isa.name) match {
+      case None => throw new RuntimeException("This is an engine bug")
+      case Some(interface) =>
+        interface.requirements.foreach {
+          case (rname, rty) =>
+            klass.definedat.block.children.find {
+              case NDef(name, x : NFn) if rname == name => true
+              case _ => false
+            } match {
+              case Some(x) =>
+              case None =>
+                error(interface, isa, rname, env)
+            }
+        }
+    }
+  }
+
+  def error(interface: Interface, isa: Tycon, rname: String, env: Env) {
+    val interty = env.get(isa.name).get.tpe
+    val tr2 = interface.requirements.map {
+      case (a, b) => TraceElement("  - " + a + " : " + env.get(a).get.tpe.repr, null)
+    }
+    val tr1 = TraceElement("The following functions define a " + interty.repr + ":", null)
+    throw new TypeException("Class " + klass.name + " is declared to be " + isa.name + " but does not define " + rname, klass.definedat, tr2 ++ List(tr1))
   }
 }

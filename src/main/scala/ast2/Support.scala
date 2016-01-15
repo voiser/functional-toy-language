@@ -92,10 +92,12 @@ case class NField(owner: Node, field: String) extends Node {
  * A type class and its members
  */
 case class Field(name: String, ty: Ty)
-class Klass(val name: String, val constructor: TypeScheme, val isas: List[Ty]) {
+class Klass(val name: String, val constructor: TypeScheme, val isas: List[Tycon]) {
   val fields = scala.collection.mutable.MutableList[Field]()
   var namespace : String = null
   var modulename : String = null
+  var definedat : NClass = null
+  def innerenv : Env = definedat.block.env
 
   def addField(name: String, ty: Ty) = fields += new Field(name, ty)
   override def toString() = "Class " + name + " "  + constructor.tpe.repr
@@ -103,7 +105,9 @@ class Klass(val name: String, val constructor: TypeScheme, val isas: List[Ty]) {
   def localname = (if (namespace == null) "" else namespace + "$") + name
   def fullname = modulename + "/" + localname
 }
-class Interface(val name: String, val requirements : List[(String, Tyfn)])
+class Interface(val name: String, val requirements : List[(String, Tyfn)]) {
+  override def toString() = name + "{" + requirements.map{r => r._1 + ":" + r._2.repr}.mkString(",") + "}"
+}
 
 
 

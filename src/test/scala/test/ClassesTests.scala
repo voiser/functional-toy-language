@@ -23,7 +23,7 @@ class ClassesTests extends FunSuite {
     }
     catch {
       case e: TypeException =>
-        Main.showException(e, code2)
+        // Main.showException(e, code2)
         throw e
     }
   }
@@ -48,6 +48,49 @@ class ClassesTests extends FunSuite {
       """
     val ret = run(code)
     assert("[false, false, false, true, true, true]" == ret.toString())
+  }
+
+  test("Incomplete class") {
+    val code = """
+      class Box(content a) is Eq
+      """
+    try {
+      run(code)
+    }
+    catch {
+      case e : TypeException =>
+        assert(e.getMessage.contains("Class Box is declared to be Eq but does not define eq"))
+    }
+  }
+
+  test("Incomplete class 2") {
+    val code = """
+      class Box(content a) is Eq, Set {
+        eq (a this, b this) = true
+      }
+      """
+    try {
+      run(code)
+    }
+    catch {
+      case e : TypeException =>
+        assert(e.getMessage.contains("Class Box is declared to be Set but does not define size"))
+    }
+  }
+
+  test("Incomplete class 3") {
+    val code = """
+      class Box(content a) is Eq {
+        eq (a this, b Int) = false
+      }
+      """
+    try {
+      run(code)
+    }
+    catch {
+      case e : TypeException =>
+        assert(e.getMessage.contains("Incompatible types"))
+    }
   }
 }
 

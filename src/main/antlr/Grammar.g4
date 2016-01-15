@@ -68,7 +68,7 @@ forward
     ;
 
 tydef
-    : CLASSID | ID ('+' tydef)* | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef | tydef ',' tydef  | '(' tydef ')'
+    : CLASSID | ID ('+' tydef)* | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef | tydef ',' tydef '->' tydef  | '(' tydef ')'
     ;
 
 list
@@ -88,7 +88,7 @@ klass
 	;
 
 klassvar
-	: ID ty=tydef
+	: ID (ty=tydef)?
 	;
 
 klassparent

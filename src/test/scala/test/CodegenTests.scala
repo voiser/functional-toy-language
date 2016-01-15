@@ -54,7 +54,9 @@ class CodegenTests extends FunSuite {
   /*
   test("Intermediate") { // manual test
     val code = """
-      false
+      class Something(a Str) is Eq {
+        eq (a this, b Int) = true
+      }
       """
     val res = intermediate(code)
     println("matches = " + res)

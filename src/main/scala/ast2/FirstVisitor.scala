@@ -180,9 +180,12 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   }
 
   override def visitKlass(ctx: GrammarParser.KlassContext) = {
+    val gen = new TyvarGenerator("a")
     def getKlassvar(ctx: GrammarParser.KlassvarContext) = {
       val name = ctx.ID().getText
-      val ty = getTy(ctx.tydef)
+      val ty =
+        if (ctx.tydef() != null) getTy(ctx.tydef)
+        else GTyvar(gen.get().name, List())
       (name, ty)
     }
     val name = ctx.CLASSID().getText

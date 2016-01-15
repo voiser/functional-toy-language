@@ -1,7 +1,7 @@
 package ast2
 
-import org.antlr.v4.runtime.ANTLRInputStream
-import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.antlr.v4.runtime._
 import scala.collection.JavaConverters._
 
 object Main {
@@ -174,6 +174,7 @@ object Main {
   def parseType(code: String) = {
     val lexer = new TypegrammarLexer(new ANTLRInputStream(code))
     val parser = new TypegrammarParser(new CommonTokenStream(lexer))
+    parser.setErrorHandler(new BailErrorStrategy)
     val cst = parser.ty()
     val gty = new TypeVisitor().visitTy(cst)
     Typegrammar.toType(gty)
@@ -200,7 +201,28 @@ object Main {
     case x : Tyfn => x
     case _ => throw new Exception("Type " + code + " is not a function type")
   } 
-  
+
+  /*
+   * Parsing error reporter
+   */
+  class SyntaxErrorStrategy(filename: String, code: String) extends DefaultErrorStrategy {
+
+    def error(token: Token) {
+      val codelines = code.split("\n")
+      showLine(codelines, "Syntax error", filename, token.getLine, token.getCharPositionInLine)
+      throw new RuntimeException("Syntax error in " + filename + ":" + token.getLine)
+    }
+
+    override def recoverInline (recognizer: Parser) : Token = {
+      error(recognizer.getCurrentToken)
+      null
+    }
+
+    override def reportError (parser: Parser, e: RecognitionException) {
+      error(parser.getCurrentToken)
+    }
+  }
+
   /*
    * Build the initial code representation
    */
@@ -208,9 +230,10 @@ object Main {
     // Build the CST
     val lexer = new GrammarLexer(new ANTLRInputStream(code))
     val parser = new GrammarParser(new CommonTokenStream(lexer))
+    parser.setErrorHandler(new SyntaxErrorStrategy(filename, code))
     // parser.setTrace(true)
     val cst = parser.file()
-    
+
     // Build the AST
     val module = new FirstVisitor(filename).visitFile(cst)
     module.main.name = "main"
@@ -244,6 +267,16 @@ object Main {
     }
   }
 
+  /*
+   * Checks that all defined classes implements the methods of their interfaces
+   */
+  class stageCheckInterfaces(env: Env, code: String) extends Function1[NModule, NModule] {
+    def apply(module: NModule) = {
+      val classes = new ClassExtractor(module).classes
+      classes.foreach(k => new InterfaceChecker(k))
+      module
+    }
+  }
   
   /*
    * Convert object-style calls
@@ -309,6 +342,7 @@ object Main {
     val env = rootEnv
     val stages = List(
         new stageType(env, code),
+        new stageCheckInterfaces(env, code),
         new stageObjectStyle(env),
         new stageTransformFunctions(env, code),
         new stageGenerateOverrides(env, code))
@@ -398,16 +432,16 @@ object Main {
     show0(n, 0)
   }
   
-  def showLine(codelines: Array[String], message: String, node: Node) = {
-    if (node != null) {
-      println("At " + node.filename + ":" + node.line + " - ")
-      println("    " + message)
-      println(codelines(node.line - 1))
-      println(" " * node.column + "^")
-    }
-    else {
-      println("    " + message)
-    }
+  def showLine(codelines: Array[String], message: String, node: Node): Unit = {
+    if (node == null) showLine(codelines, message, node.filename, node.line, node.column)
+    else println("    " + message)
+  }
+
+  def showLine(codelines: Array[String], message: String, filename: String, line: Int, column: Int) = {
+    println("At " + filename + ":" + line + " - ")
+    println("    " + message)
+    println(codelines(line - 1))
+    println(" " * column + "^")
   }
   
   def showException(e: TypeException, code: String) = {

@@ -677,6 +677,7 @@ object Typer3 {
         members.foreach { member =>
           k.addField(member._1, member._2)
         }
+        k.definedat = z
         env.putClass(k)
         val s1 = unify(t, x, s, n)
         Main.isa(y, isas2 map {_.repr})(env)
