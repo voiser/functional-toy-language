@@ -9,8 +9,8 @@ import intermediate._
  */
 class Stack {
   
-  var depth = 0;
-  var maxdepth = 0;
+  var depth = 0
+  var maxdepth = 0
   
   def push {
     push(1)
@@ -76,19 +76,19 @@ object Codegen {
       uf: CreateFunction) {
     
     uf.constants.foreach { x =>  
-      val fv = cw.visitField(ACC_PUBLIC, x.name, JTHING, null, null);
+      val fv = cw.visitField(ACC_PUBLIC, x.name, JTHING, null, null)
       fv.visitEnd();
     }
     
     uf.captures.foreach { x => 
       val javaty = jsuperclass(x.ty)
-      val fv = cw.visitField(ACC_PUBLIC, x.name, javaty, null, null);
+      val fv = cw.visitField(ACC_PUBLIC, x.name, javaty, null, null)
       fv.visitEnd();
     }
     
     uf.externs.foreach { x =>
       val javaty = jsuperclass(x.ty)
-      val fv = cw.visitField(ACC_PUBLIC, x.name, javaty, null, null);
+      val fv = cw.visitField(ACC_PUBLIC, x.name, javaty, null, null)
       fv.visitEnd();
     }
   }
@@ -108,6 +108,7 @@ object Codegen {
     mv.visitMethodInsn(INVOKESPECIAL, FUNC, "<init>", "()V", false)
 
     val stack = new Stack()
+
     initConstants(mv, stack, module, uf)
     
     mv.visitInsn(RETURN)
@@ -148,15 +149,15 @@ object Codegen {
           stack.pop
 
         case NFloat(f) =>
-          mv.visitVarInsn(ALOAD, 0);
+          mv.visitVarInsn(ALOAD, 0)
           stack.push
-          mv.visitTypeInsn(NEW, "runtime/Float");
+          mv.visitTypeInsn(NEW, "runtime/Float")
           stack.push
-          mv.visitInsn(DUP);
+          mv.visitInsn(DUP)
           stack.push
-          mv.visitLdcInsn(new java.lang.Float(f));
+          mv.visitLdcInsn(new java.lang.Float(f))
           stack.push
-          mv.visitMethodInsn(INVOKESPECIAL, "runtime/Float", "<init>", "(F)V", false);
+          mv.visitMethodInsn(INVOKESPECIAL, "runtime/Float", "<init>", "(F)V", false)
           stack.pop
           stack.pop
           mv.visitFieldInsn(PUTFIELD, slashedName, name, JTHING)
@@ -172,18 +173,33 @@ object Codegen {
       val ty = pair.ty
       val fullname = pair.fullname
       val javaclass = jsuperclass(ty)
-      mv.visitVarInsn(ALOAD, 0);
+      mv.visitVarInsn(ALOAD, 0)
       stack.push
-      mv.visitTypeInsn(NEW, fullname);
+      mv.visitTypeInsn(NEW, fullname)
       stack.push
-      mv.visitInsn(DUP);
+      mv.visitInsn(DUP)
       stack.push
-      mv.visitMethodInsn(INVOKESPECIAL, fullname, "<init>", "()V", false);
+      mv.visitMethodInsn(INVOKESPECIAL, fullname, "<init>", "()V", false)
       stack.pop
-      mv.visitFieldInsn(PUTFIELD, slashedName, name, javaclass);
+      mv.visitFieldInsn(PUTFIELD, slashedName, name, javaclass)
       stack.pop
       stack.pop
     }
+
+    /*
+    uf.externs.foreach { pair =>
+      val name = pair.name
+      val ty = pair.ty
+      val fullname = pair.fullname
+      val javaclass = jsuperclass(ty)
+      mv.visitVarInsn(ALOAD, 0)
+      stack.push
+      mv.visitFieldInsn(GETFIELD, slashedName, name, javaclass)
+      mv.visitTypeInsn(CHECKCAST, fullname)
+      mv.visitMethodInsn(INVOKEVIRTUAL, fullname, "initialize", "()V", false)
+      stack.pop
+    }
+    */
   }
   
   /**
@@ -212,12 +228,14 @@ object Codegen {
       stack.push
       val javaty = jsuperclass(capture.ty)
       val ty = superclass(capture.ty)
-      mv.visitTypeInsn(CHECKCAST, ty);
-      mv.visitFieldInsn(PUTFIELD, slashedName, capture.name, javaty);
+      mv.visitTypeInsn(CHECKCAST, ty)
+      mv.visitFieldInsn(PUTFIELD, slashedName, capture.name, javaty)
       stack.pop
       stack.pop
     }
-    
+
+    //initConstants(mv, stack, module, uf)
+
     mv.visitInsn(RETURN)
 
     mv.visitMaxs(stack.maxdepth + 1, ncaptures + 1)
@@ -234,13 +252,13 @@ object Codegen {
       ex: Instantiate,
       stack: Stack) {
     
-    mv.visitTypeInsn(NEW, ex.name);
+    mv.visitTypeInsn(NEW, ex.name)
     stack.push
-    mv.visitInsn(DUP);
+    mv.visitInsn(DUP)
     stack.push
         
-    mv.visitMethodInsn(INVOKESPECIAL, ex.name, "<init>", "()V", false);          
-    mv.visitTypeInsn(CHECKCAST, FUNC);
+    mv.visitMethodInsn(INVOKESPECIAL, ex.name, "<init>", "()V", false)
+    mv.visitTypeInsn(CHECKCAST, FUNC)
     mv.visitVarInsn(ASTORE, ex.index)
     stack.pop
   }
@@ -256,8 +274,8 @@ object Codegen {
       stack: Stack) {
     
     
-    mv.visitVarInsn(ALOAD, ex.index);
-    mv.visitTypeInsn(CHECKCAST, ex.name);
+    mv.visitVarInsn(ALOAD, ex.index)
+    mv.visitTypeInsn(CHECKCAST, ex.name)
         
     ex.params.foreach { x =>
       add(module, uf, mv, x, stack)
@@ -266,7 +284,7 @@ object Codegen {
     val ncaptures = ex.params.length
     val j = JTHING * ncaptures
         
-    mv.visitMethodInsn(INVOKEVIRTUAL, ex.name, "initialize", "(" + j + ")V", false);          
+    mv.visitMethodInsn(INVOKEVIRTUAL, ex.name, "initialize", "(" + j + ")V", false)
     stack.pop
   }
   
@@ -286,31 +304,31 @@ object Codegen {
       case x: Nop =>
       
       case SInt(v) =>
-        mv.visitTypeInsn(NEW, "runtime/Int");
+        mv.visitTypeInsn(NEW, "runtime/Int")
         stack.push
-        mv.visitInsn(DUP);
+        mv.visitInsn(DUP)
         stack.push
-        mv.visitLdcInsn(new Integer(v));
+        mv.visitLdcInsn(new Integer(v))
         stack.push
-        mv.visitMethodInsn(INVOKESPECIAL, "runtime/Int", "<init>", "(I)V", false);
+        mv.visitMethodInsn(INVOKESPECIAL, "runtime/Int", "<init>", "(I)V", false)
         stack.pop
         stack.pop
         
       case SFloat(f) =>
-        mv.visitTypeInsn(NEW, "runtime/Float");
+        mv.visitTypeInsn(NEW, "runtime/Float")
         stack.push
-        mv.visitInsn(DUP);
+        mv.visitInsn(DUP)
         stack.push
-        mv.visitLdcInsn(new java.lang.Float(f));
+        mv.visitLdcInsn(new java.lang.Float(f))
         stack.push
-        mv.visitMethodInsn(INVOKESPECIAL, "runtime/Float", "<init>", "(F)V", false);
+        mv.visitMethodInsn(INVOKESPECIAL, "runtime/Float", "<init>", "(F)V", false)
         stack.pop
         stack.pop
         
       case SString(s) =>
         mv.visitTypeInsn(NEW, "runtime/Str")
         stack.push
-        mv.visitInsn(DUP);
+        mv.visitInsn(DUP)
         stack.push
         mv.visitLdcInsn(s)
         stack.push
@@ -321,7 +339,7 @@ object Codegen {
       case SBool(b) =>
         mv.visitTypeInsn(NEW, "runtime/Bool")
         stack.push
-        mv.visitInsn(DUP);
+        mv.visitInsn(DUP)
         stack.push
         mv.visitLdcInsn(b)
         stack.push
@@ -330,36 +348,36 @@ object Codegen {
         stack.pop
 
       case Local(i) =>
-        mv.visitVarInsn(ALOAD, i);
+        mv.visitVarInsn(ALOAD, i)
         stack.push
       
       case Constant(name) =>
-        val ty = uf.constants.collectFirst { case CreateConstant(n, t, _) if (name == n) => jsuperclass(t) }
+        val ty = uf.constants.collectFirst { case CreateConstant(n, t, _) if name == n => jsuperclass(t) }
         ty match {
           case None => throw new CodegenException("In class " + uf.name + ", I can't find the type of " + name + ". This is a compiler bug")
           case Some(t) =>
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitFieldInsn(GETFIELD, sn, name, t);
+            mv.visitVarInsn(ALOAD, 0)
+            mv.visitFieldInsn(GETFIELD, sn, name, t)
             stack.push
         }
         
       case Capture(name) =>
-        val ty = uf.captures.collectFirst { case CreateCapture(n, t) if (name == n) => jsuperclass(t) }
+        val ty = uf.captures.collectFirst { case CreateCapture(n, t) if name == n => jsuperclass(t) }
         ty match {
           case None => throw new CodegenException("In class " + uf.name + ", I can't find the type of " + name + ". This is a compiler bug")
           case Some(t) =>
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitFieldInsn(GETFIELD, sn, name, t);
+            mv.visitVarInsn(ALOAD, 0)
+            mv.visitFieldInsn(GETFIELD, sn, name, t)
             stack.push
         }  
         
       case intermediate.Extern(name) =>
-        val ty = uf.externs.collectFirst { case CreateExtern(n, f, t) if (name == n) => jsuperclass(t) }
+        val ty = uf.externs.collectFirst { case CreateExtern(n, f, t) if name == n => jsuperclass(t) }
         ty match {
           case None => throw new RuntimeException("I can't find the type of " + name + ". This is a compiler bug")
           case Some(t) =>
-            mv.visitVarInsn(ALOAD, 0);
-            mv.visitFieldInsn(GETFIELD, sn, name, t);
+            mv.visitVarInsn(ALOAD, 0)
+            mv.visitFieldInsn(GETFIELD, sn, name, t)
             stack.push
         }
         
@@ -374,7 +392,7 @@ object Codegen {
         val javasignature = "(" + (JTHING * args.length) + ")" + JTHING
         mv.visitVarInsn(ALOAD, local)
         stack.push
-        mv.visitTypeInsn(CHECKCAST, FUNC);
+        mv.visitTypeInsn(CHECKCAST, FUNC)
         args.foreach { arg => 
             add(module, uf, mv, arg, stack)
         }
@@ -405,11 +423,11 @@ object Codegen {
         mv.visitMethodInsn(INVOKEVIRTUAL, FUNC, javafname, javasignature, false)
         args.foreach { x => stack.pop }
      
-      case CallDynamic(name, args, options, intypes) =>
+      case CallDynamic(_, args, options, intypes) =>
         def pushArray(l: List[_], jt: String) {
-          mv.visitLdcInsn(new Integer(l.length));
+          mv.visitLdcInsn(new Integer(l.length))
           stack.push
-          mv.visitTypeInsn(ANEWARRAY, jt);
+          mv.visitTypeInsn(ANEWARRAY, jt)
           stack.push
           (0 to l.length-1).foreach { case i => 
             mv.visitInsn(DUP)
@@ -418,7 +436,7 @@ object Codegen {
             stack.push
             mv.visitLdcInsn(l(i))
             stack.push
-            mv.visitInsn(AASTORE);
+            mv.visitInsn(AASTORE)
             stack pop 3
           }
         }
@@ -427,9 +445,9 @@ object Codegen {
         pushArray(intypes, "java/lang/String")
 
         {
-          mv.visitLdcInsn(new Integer(args.length));
+          mv.visitLdcInsn(new Integer(args.length))
           stack.push
-          mv.visitTypeInsn(ANEWARRAY, THING);
+          mv.visitTypeInsn(ANEWARRAY, THING)
           stack.push
           (0 to args.length-1).foreach { case i => 
             mv.visitInsn(DUP)
@@ -439,18 +457,18 @@ object Codegen {
             add(module, uf, mv, args(i), stack)
             //mv.visitVarInsn(ALOAD, i + 1)
             stack.push
-            mv.visitInsn(AASTORE);
+            mv.visitInsn(AASTORE)
             stack pop 3
           }
         }
-        mv.visitMethodInsn(INVOKESTATIC, "runtime/DynamicDispatch", "dispatch", "([Ljava/lang/String;[Ljava/lang/String;[Lruntime/Thing;)Lruntime/Thing;", false);
+        mv.visitMethodInsn(INVOKESTATIC, "runtime/DynamicDispatch", "dispatch", "([Ljava/lang/String;[Ljava/lang/String;[Lruntime/Thing;)Lruntime/Thing;", false)
         stack pop args
         stack.push
       
       case SIf(cond, extrue, exfalse) =>
         add(module, uf, mv, cond, stack)
-        mv.visitTypeInsn(CHECKCAST, BOOL);
-        mv.visitFieldInsn(GETFIELD, BOOL, "b", "Z");
+        mv.visitTypeInsn(CHECKCAST, BOOL)
+        mv.visitFieldInsn(GETFIELD, BOOL, "b", "Z")
         val l1 = new Label()
         mv.visitJumpInsn(IFEQ, l1)
         add(module, uf, mv, extrue, stack)
@@ -463,21 +481,21 @@ object Codegen {
 
       case Instance(cname, argtypes, args) =>
         val signature = argtypes.map(a => jsuperclass(a)).mkString("(", "", ")V")
-        mv.visitTypeInsn(NEW, cname);
+        mv.visitTypeInsn(NEW, cname)
         stack.push
-        mv.visitInsn(DUP);
+        mv.visitInsn(DUP)
         stack.push
         args.foreach { arg =>
           add(module, uf, mv, arg, stack)
         }
-        mv.visitMethodInsn(INVOKESPECIAL, cname, "<init>", signature, false);
+        mv.visitMethodInsn(INVOKESPECIAL, cname, "<init>", signature, false)
         stack.pop
         stack.pop
 
       case InstanceField(owner, classname, fieldname) =>
         add(module, uf, mv, owner, stack)
-        mv.visitTypeInsn(CHECKCAST, classname);
-        mv.visitFieldInsn(GETFIELD, classname, fieldname, JTHING);
+        mv.visitTypeInsn(CHECKCAST, classname)
+        mv.visitFieldInsn(GETFIELD, classname, fieldname, JTHING)
         stack.push
     }
   }
@@ -498,7 +516,7 @@ object Codegen {
     mv.visitCode()
     
     val stack = new Stack()
-    (0 to nargs).map { x => stack.push }
+    (0 to nargs).foreach { x => stack.push }
     
     uf.instantiations.foreach { x => 
       instantiate(module, uf, mv, x, stack)
@@ -537,10 +555,12 @@ object Codegen {
     mv.visitTypeInsn(NEW, slashedName(module, uf))
     mv.visitInsn(DUP)
     mv.visitMethodInsn(INVOKESPECIAL, slashedName(module, uf), "<init>", "()V", false)
+    //mv.visitInsn(DUP)
+    //mv.visitMethodInsn(INVOKEVIRTUAL, slashedName(module, uf), "initialize", "()V", false)
     mv.visitMethodInsn(INVOKEVIRTUAL, slashedName(module, uf), "apply0", "()Lruntime/Thing;", false)
     mv.visitInsn(POP)
     mv.visitInsn(RETURN)
-    mv.visitMaxs(2, 1)
+    mv.visitMaxs(3, 1)
     mv.visitEnd()
   }
   
@@ -551,49 +571,59 @@ object Codegen {
     
     uf.metadata.foreach { 
       case MetadataType(repr) =>
-        val fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, "type", "Ljava/lang/String;", null, null);
+        val fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, "type", "Ljava/lang/String;", null, null)
         fv.visitEnd();
     }
 
-    val mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
-    mv.visitCode();
+    val mv = cw.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null)
+    mv.visitCode()
     
     uf.metadata.foreach { 
       case MetadataType(repr) =>
-        mv.visitLdcInsn(repr);
+        mv.visitLdcInsn(repr)
         mv.visitFieldInsn(PUTSTATIC, slashedName(module, uf), "type", "Ljava/lang/String;");
     }
+
+    val stack = new Stack
+    if (uf.name == "main") addExports(cw, mv, module, uf, stack)
     
-    if (uf.name == "main") addExports(cw, mv, module, uf)
-    
-    mv.visitInsn(RETURN);
-    mv.visitMaxs(6, 0);
-    mv.visitEnd();
+    mv.visitInsn(RETURN)
+    mv.visitMaxs(60, 60)
+    mv.visitEnd()
   }
   
   /**
    * Adds a static field containing the exported functions
    */
-  def addExports(cw: ClassWriter, mv: MethodVisitor, module: CreateModule, uf: CreateFunction) {
+  def addExports(cw: ClassWriter, mv: MethodVisitor, module: CreateModule, uf: CreateFunction, stack: Stack) {
     val fv = cw.visitField(ACC_PUBLIC + ACC_STATIC, "exports", "[Lruntime/Export;", null, null);
-    fv.visitEnd();
+    fv.visitEnd()
     
     val nExports = module.exportedFunctions.length
     
-    mv.visitLdcInsn(new Integer(nExports));
-    mv.visitTypeInsn(ANEWARRAY, "runtime/Export");
+    mv.visitLdcInsn(new Integer(nExports))
+    mv.visitTypeInsn(ANEWARRAY, "runtime/Export")
     
     ((0 to nExports-1) zip module.exportedFunctions).foreach { case (i, x) => 
-      mv.visitInsn(DUP);
-      mv.visitLdcInsn(new Integer(i));
-      mv.visitTypeInsn(NEW, "runtime/Export");
-      mv.visitInsn(DUP);
-      mv.visitLdcInsn(x.name);
-      mv.visitMethodInsn(INVOKESPECIAL, "runtime/Export", "<init>", "(Ljava/lang/String;)V", false);
-      mv.visitInsn(AASTORE);
+      mv.visitInsn(DUP)
+      mv.visitLdcInsn(new Integer(i))
+      mv.visitTypeInsn(NEW, "runtime/Export")
+      mv.visitInsn(DUP)
+      mv.visitLdcInsn(x.name)
+      mv.visitLdcInsn(x.`type`)
+      mv.visitLdcInsn(x.overrides.length)
+      mv.visitTypeInsn(ANEWARRAY, "java/lang/String")
+      ((0 to x.overrides.length) zip x.overrides).foreach { case (ii, o) =>
+        mv.visitInsn(DUP)
+        mv.visitLdcInsn(new Integer(ii))
+        mv.visitLdcInsn(o)
+        mv.visitInsn(AASTORE)
+      }
+      mv.visitMethodInsn(INVOKESPECIAL, "runtime/Export", "<init>", "(Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;)V", false)
+      mv.visitInsn(AASTORE)
     }
     
-    mv.visitFieldInsn(PUTSTATIC, slashedName(module, uf), "exports", "[Lruntime/Export;");
+    mv.visitFieldInsn(PUTSTATIC, slashedName(module, uf), "exports", "[Lruntime/Export;")
   }
   
   /**
@@ -651,9 +681,9 @@ object Codegen {
     stack.pop
 
     ((1 to nFields) zip c.fields).foreach { case (i, f) =>
-      mv.visitVarInsn(ALOAD, 0);
+      mv.visitVarInsn(ALOAD, 0)
       stack.push
-      mv.visitVarInsn(ALOAD, i);
+      mv.visitVarInsn(ALOAD, i)
       stack.push
       mv.visitFieldInsn(PUTFIELD, slashedName(module, c), f.name, jsuperclass(f.ty))
       stack pop 2

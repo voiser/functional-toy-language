@@ -29,7 +29,7 @@ class CompilationUnit(
   val functions: List[Function], 
   val externs: List[Extern],
   val classes: List[Klass]
-) {
+  ) {
   
   // Generates all function units contained in this set
   val unitFunctions = {
@@ -66,9 +66,12 @@ class CompilationUnit(
           localmap.put(name, l)
           (name, v, l)
         case NDef(name, v : NFn) =>
+          val name1 =
+            if (v.isOverride != null) v.isOverride._1.localname + "$" + name
+            else name
           l = l + 1
-          localmap.put(name, l)
-          (name, v, l)
+          localmap.put(name1, l)
+          (name1, v, l)
         case NDef(name, v : NInstantiation) =>
           l = l + 1
           localmap.put(name, l)
@@ -95,18 +98,34 @@ class CompilationUnit(
               localmap.put(name, l)
               (name, a, l)
           }
-
       }
-      val locals = locals0.filter(_ != null)
-      
+      val locals1 = locals0.filter(_ != null)
+
+      /*
+      val locals1Names = locals1.map(_._1)
+      val localOvers = localOverrides.find(e => e.function == f.function).get.symbols.map { over =>
+        val name = over.node.name
+        if (locals1Names.contains(name)) {
+          null
+        }
+        else {
+          l = l + 1
+          localmap.put(name, l)
+          (name, over.node, l)
+        }
+      }.filter(_ != null)
+      */
+
+      val locals = locals1 /* ++ localOvers */
+
       val myexterns = externs.find { x => x.function.name == root.name }
-      
+
       val exts : List[(Node, String, String, Ty)] = myexterns match {
         case None => List()
         case Some(Extern(node, overrides)) =>
           overrides.map { over => (node, over.name, over.fullname, over.ts.tpe) }
       }
-      
+
       new CompilationUnitFunction(this, root, name, className, slashedName, constants, params, locals, exts, captures)
     }
   }

@@ -2,6 +2,7 @@ package ast2
 
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime._
+import runtime.Export
 import scala.collection.JavaConverters._
 
 object Main {
@@ -90,7 +91,6 @@ object Main {
     val t = parseType(ty)
     val ts = TypeScheme(Typer3.tyvars(t), t)
     env.putOverride(name, nativefn, ts)
-    t
   }
 
   def registerInterface(cname: String, methods: List[String])(implicit env: Env) = {
@@ -241,20 +241,44 @@ object Main {
     // show(module.main, code)
     
     // Imports
-    module.imports.foreach { case (realname, alias) => 
-      val klass = Class.forName(realname)
-      val field = klass.getField("type")
-      val functype = field.get(null).asInstanceOf[String]
-      val parsed = parseType(functype)
-      val tyvars = Typer3.tyvars(parsed)
-      env.put(alias, TypeScheme(tyvars, parsed))
-      env.putOverride(alias, realname, TypeScheme(tyvars, parsed))
+    module.imports.foreach {
+      case (pack, fname) =>
+
+        val moduleClass = Class.forName(pack + ".main")
+        val exports = moduleClass.getField("exports").get(null).asInstanceOf[Array[Export]].toList
+
+        val export = exports.find { _.name == fname } match {
+          case None => throw new Exception("Function " + fname + " can't be located in module " + pack)
+          case Some(export) => export
+
+        }
+
+        val genericType = export.`type`
+
+        // Register the generic function
+        env.get(fname) match {
+          case Some(_) =>
+          case None =>
+            // first import
+            registerFn(fname, genericType)(env)
+        }
+
+        val overs = export.overrides
+
+        overs.foreach { over =>
+          val klass = Class.forName(over)
+          val field = klass.getField("type")
+          val functype = field.get(null).asInstanceOf[String]
+          val parsed = parseType(functype)
+          val tyvars = Typer3.tyvars(parsed)
+          registerOverride(over.replace(".", "/"), fname, parsed.repr)(env)
+        }
     }
 
     module
   }
-  
-  
+
+
   /*
    * Type the AST
    */
@@ -302,8 +326,12 @@ object Main {
       // Name all anonymous functions
       val anonFuncs = new AnonymousFunctionNamerVisitor(module).anonFuncs
       // make anonymous functions local
-      val ret = new AnonymousFunction2LocalTransformer(module, anonFuncs.toList).apply()
-      //show(module.main, code)
+      // show(module.main, code)
+      val ret1 = new AnonymousFunction2LocalTransformer(module, anonFuncs.toList).apply()
+      val ret2 = new ClassMover(ret1).apply()
+      //show(ret2.main, code)
+      val ret = new OverrideMover(ret2).apply()
+      //show(ret.main, code)
       ret
     }
   }
@@ -327,11 +355,31 @@ object Main {
     // Extract references to all functions
     val funcs = new FunctionVisitor(module).functions.toList
     // Extract references to all external symbols
-    val externs = funcs.map { f => Extern(f.function, new OverVisitor(f.function).externs) }
+    val externs = funcs.map { f =>
+      val allovers = new OverVisitor(f.function).allovers
+      val split = allovers.groupBy(_.isLocal)
+      val externs =
+        if (split.contains(false)) split(false)
+        else List()
+      Extern(f.function, externs)
+    }
+
+    // println("Externs = " + externs)
+
+    /*
+    val localOvers = funcs.map { f =>
+      val allovers = new OverVisitor(f.function).allovers
+      val split = allovers.groupBy(_.isLocal)
+      val externs =
+        if (split.contains(true)) split(true)
+        else List()
+      Extern(f.function, externs)
+    }
+    */
     // Extract all defined classes
     val classes = new ClassExtractor(module).classes
     // The final compilation unit.
-    new CompilationUnit(filename, module, funcs, externs, classes)
+    new CompilationUnit(filename, module, funcs, externs, classes/*, localOvers*/)
   }
   
   
@@ -433,7 +481,7 @@ object Main {
   }
   
   def showLine(codelines: Array[String], message: String, node: Node): Unit = {
-    if (node == null) showLine(codelines, message, node.filename, node.line, node.column)
+    if (node != null) showLine(codelines, message, node.filename, node.line, node.column)
     else println("    " + message)
   }
 

@@ -1,6 +1,7 @@
 package intermediate
 
 import ast2._
+import runtime.Export
 
 abstract class CodegenType
 case class CodegenValue() extends CodegenType {
@@ -21,11 +22,13 @@ abstract class CodegenStep {
 case class CreateModule(
     name: String, 
     functions: List[CreateFunction],
-    classes: List[CreateClass])
+    classes: List[CreateClass],
+    exports: List[Export])
     extends CodegenStep {
-  def repr(d: Int) = margin(d) + "Module " + name + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
+  def repr(d: Int) = margin(d) + "Module " + name + " {\n" + showExports(d) + "\n" + childrepr(d) + "\n" + margin(d) + "}"
   def children = functions ++ classes
-  def exportedFunctions = functions // we don't have private and public functions yet
+  def exportedFunctions = exports // we don't have private and public functions yet
+  def showExports(d: Int) = exports.map { e => "Export " + e.name + " " + e.`type` + " " + e.overrides.mkString(" ") }.mkString(margin(d+1), "\n" + margin(d+1), "\n")
 }
 case class CreateFunction(
     name: String,
@@ -284,10 +287,15 @@ object Intermediate {
     val locals = function.locals.map { x => CreateLocal(x._1, x._3, codegenType(x._2.ty)) }
     val allLocals = (function.locals ++ function.params).distinct
     
-    val instantiations = function.root.value.children.collect { 
-      case NDef(name, v: NFn) =>
+    val instantiations = function.root.value.children.collect {
+      case NDef(name, v: NFn) if v.isOverride == null =>
         val destname = unit.module.name + "/" + v.name
         val local = flocal(name, allLocals)
+        Instantiate(destname, local)
+      case NDef(name, v: NFn) if v.isOverride != null =>
+        val destname = unit.module.name + "/" + v.name
+        val name1 = v.isOverride._1.localname + "$" + name
+        val local = flocal(name1, allLocals)
         Instantiate(destname, local)
       case a @ NDefAnon(name, _) /* if (a.env.parent == function.root.value.env) */=>
         val destname = unit.module.name + "/" + name
@@ -298,9 +306,11 @@ object Intermediate {
         val local = flocal(name, allLocals)
         Instantiate(destname, local)
     }
-   
     val initializations = function.root.value.children.collect {
-      case NDef(name, v: NFn) => createInitialize(unit, function, allLocals, captures, name, v.name)
+      case NDef(name, v: NFn) if v.isOverride == null => createInitialize(unit, function, allLocals, captures, name, v.name)
+      case NDef(name, v: NFn) if v.isOverride != null =>
+        val name1 = v.isOverride._1.localname + "$" + name
+        createInitialize(unit, function, allLocals, captures, name1, v.name)
       case a @ NDefAnon(name, _) /* if (a.env.parent == function.root.value.env) */ => createInitialize(unit, function, allLocals, captures, name, name)
       case x @ NRefAnon(name) => createInitialize(unit, function, allLocals, captures, name, name)
     }
@@ -388,7 +398,11 @@ object Intermediate {
           CallDynamic(fname, params, x.map(_.fullname), intypes)
         
         case (Some(o), _) =>
-          CallExtern(sym(o.fullname), params)
+          val s = sym(o.fullname)
+          findlocal(s, allLocals) match {
+            case Some((name, _, i)) => CallLocal(i, s, params)
+            case None => CallExtern(s, params)
+          }
       }
        
     case x @ NIf(cond, extrue, exfalse) =>
@@ -431,6 +445,25 @@ object Intermediate {
     CreateClass(k.localname, fields)
   }
 
+  def genExports(unit: CompilationUnit) =
+    unit.unitFunctions.map { uf =>
+      val over = uf.root.isOverride
+      if (over != null) (uf.root.defname, uf.unit.module.name + "." + uf.name)
+      else (uf.root.defname, uf.unit.module.name + "." + uf.name)
+    }.groupBy(_._1)
+      .map { x =>
+        val name = x._1
+        unit.module.main.env.get(name) match {
+          case Some(ts) =>
+            val ty = ts.tpe.repr
+            val overs = x._2.map(z => z._2).toArray
+            new Export(name, ty, overs)
+
+          case None => null
+        }
+      }.filterNot(_ == null)
+      .toList
+
   def codegen(unit: CompilationUnit) = {
     val functions = unit.unitFunctions.map { uf =>
       genfunction(unit, uf)
@@ -438,6 +471,8 @@ object Intermediate {
     val classes = unit.classes.map { k =>
       genclass(unit, k)
     }
-    CreateModule(unit.filename, functions, classes)
+    val exports = genExports(unit)
+
+    CreateModule(unit.filename, functions, classes, exports)
   }
 }

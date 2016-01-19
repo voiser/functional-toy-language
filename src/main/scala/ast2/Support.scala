@@ -230,6 +230,8 @@ case class Extern(function: NFn, symbols: List[Over]) {
 case class Type(fullname: String, ty: Tycon)
 case class Over(name: String, fullname: String, ts: TypeScheme) {
   override def toString() = "Over(" + fullname + " : " + ts.tpe.repr + ")"
+  var node: NFn = null
+  def isLocal = node != null
 }
 
 /**

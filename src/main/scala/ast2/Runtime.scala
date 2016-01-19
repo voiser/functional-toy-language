@@ -58,6 +58,7 @@ class Runtime {
   def apply0(name: String) = {
     val k = x.loadClass(name)
     val i = k.newInstance()
+    k.getMethod("initialize").invoke(i)
     k.getMethod("apply0").invoke(i)    
   }
 }

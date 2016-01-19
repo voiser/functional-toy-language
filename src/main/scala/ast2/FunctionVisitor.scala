@@ -224,7 +224,7 @@ class FetchRefsVisitor(root: NFn) extends Visitor {
     case NDefAnon(name, v) => NRefAnon(name)
   }
   visit(root.value)
-  
+
   def captures = captured.diff(myvars)
   
   override def visitNRef(n: NRef) {
@@ -344,7 +344,7 @@ class OverVisitor(root: NFn) extends Visitor {
 
   val functions = scala.collection.mutable.Set[Over]()
   val pending = scala.collection.mutable.Map[String, (NRef, List[Over])]()
-  def externs = functions.toList.groupBy(_.fullname).map(_._2.head).toList // remove duplicates (Overs with the same full name)
+  def allovers = functions.toList.groupBy(_.fullname).map(_._2.head).toList // remove duplicates (Overs with the same full name)
   visit(root.value)
   
   def lookupOverride(myType: Ty, name: String, n: Node, overrides: List[Over]) = {
@@ -358,7 +358,9 @@ class OverVisitor(root: NFn) extends Visitor {
       }
     }.filterNot { x => x == null }
   }
-  
+
+  override def visit(n: NFn) = {}
+
   override def visit(n: NDef, r: NRef): Unit = {
     r.env.root.getOverrides(r.name) match {
       case List(x) => // it's an imported symbol
@@ -404,7 +406,7 @@ class OverVisitor(root: NFn) extends Visitor {
         }
         
       case x => // Several options: this means a dynamic dispatch 
-        x.foreach { functions += _ }
+        //x.foreach { functions += _ }
         n.dynamicOver = x
     }
   }
@@ -424,6 +426,8 @@ class ClassNamer(module: String, name: String) extends Visitor {
         k.namespace = ns
         k.modulename = module
     }
+    val newName = if (name != null) name + "$" + x.name else x.name
+    new ClassNamer(module, newName).visit(x.block)
   }
 
   override def visit(n: NDef) {
@@ -465,7 +469,8 @@ class OverGenerator(module: NModule) extends Visitor {
     n.isOverride match {
       case (k, nn, f) =>
         val fullname = module.name + "/" + n.name
-        Main.registerOverride(fullname, nn, f.repr)(n.env.root)
+        val over = Main.registerOverride(fullname, nn, f.repr)(n.env.root)
+        over.node = n
 
       case null =>
     }

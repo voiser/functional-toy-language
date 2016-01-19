@@ -122,6 +122,7 @@ object Typer3 {
               case Some(ts) => ts.newInstance(gen).asInstanceOf[Tyfn].out
               case _ => throw new Exception("This is a compiler bug")
             }
+          case _ => exception("'this' can be used only inside a class", n)
         }
       case z @ _ => z
     }
@@ -390,7 +391,7 @@ object Typer3 {
 
                 if (matchingInterface.isEmpty) exception("Overriding method " + name + " of interface " + interface.name + " in a class that does not implement it", n)
 
-                val t2 = emptySubst.extend(Tyvar.wildard, ktycon)(wildcarded)
+                val t2 = emptySubst.extend(Tyvar.wildard, ktycon)(wildcarded).asInstanceOf[Tyfn]
                 try {
                   unify(t2, defining, s1, n)
                 }
@@ -404,9 +405,7 @@ object Typer3 {
                 }
 
                 ex.asInstanceOf[NFn].isOverride = (theKlass, name, t2)
-                s1
-
-
+                unify(t, t2, s1, n)
 
               /*
                * We are outside a class definition
@@ -563,7 +562,7 @@ object Typer3 {
            * The function is not defined
            */
           case List() =>
-            throw new TypeException("Can't find definition of '" + name + "'", n, trac("When typing a function call"))
+            throw new TypeException("Can't find definition of '" + name + "'", n, trace)
 
           /*
            * There is only the forward definition
@@ -704,9 +703,8 @@ object Typer3 {
             constructor match {
               case Tyfn(ins, out) =>
                 if (ins.length != params.length) throw new TypeException("Constructor parameters do not match. Given " + params.length + " needed " + ins.length, n, trace)
-                val s1 = unify(t, out, s, n)
-                val s2 = (s1 /: (params zip ins)) ((s, x) => tp(env, x._1, x._2, s))
-                s2
+                val s2 = (s /: (params zip ins)) ((s, x) => tp(env, x._1, x._2, s))
+                unify(t, out, s2, n)
             }
           case Some(ts) => exception("Can't instantiate " + ts.tpe.repr, z)
         }

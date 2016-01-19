@@ -2,6 +2,8 @@ package runtime;
 
 public abstract class Func extends Thing {
 
+    public void initialize() {}
+
     public Thing apply0() {
         throw new RuntimeException("This is a compiler bug");
     }

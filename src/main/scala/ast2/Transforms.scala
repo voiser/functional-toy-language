@@ -1,5 +1,7 @@
 package ast2
 
+import scala.collection.mutable
+
 /**
  * A visitor that returns a node for each visited one.
  * Meant to be used as a basis to a tree transformation.
@@ -7,22 +9,26 @@ package ast2
 class Transformer {
   
   def fill[T<:Node](origin: T, dest: T): T = {
-    dest.env = origin.env
-    dest.ctx = origin.ctx
-    dest.ty = origin.ty
-    dest.filename = origin.filename
-    
-    (origin, dest) match {
-      case (o:NFn, d:NFn) =>
-        d.name = o.name
-        d.defname = o.defname
-        
-      case (o: NApply, d:NApply) =>
-        d.realName = o.realName
-        d.isRecursive = o.isRecursive
-        d.resolvedType = o.resolvedType
-      
-      case _ => 
+    if (dest != null) {
+      dest.env = origin.env
+      dest.ctx = origin.ctx
+      dest.ty = origin.ty
+      dest.filename = origin.filename
+
+      (origin, dest) match {
+        case (o: NFn, d: NFn) =>
+          d.name = o.name
+          d.defname = o.defname
+          d.fwdty = o.fwdty
+          d.isOverride = o.isOverride
+
+        case (o: NApply, d: NApply) =>
+          d.realName = o.realName
+          d.isRecursive = o.isRecursive
+          d.resolvedType = o.resolvedType
+
+        case _ =>
+      }
     }
     dest
   }
@@ -69,7 +75,15 @@ class Transformer {
   def visitNRefAnon(n: NRefAnon): Node = {
     NRefAnon(n.name)
   }
-  
+
+  def visitNClass(n: NClass): Node = {
+    NClass(n.name, n.params, n.is, visit(n.block).asInstanceOf[NBlock])
+  }
+
+  def visitNDefFn(d: NDef, f: NFn): Node = {
+    NDef(d.name, visit(f))
+  }
+
   def visit(n: Node) : Node = {
     n match {
       
@@ -81,7 +95,10 @@ class Transformer {
         
       case x : NBlock =>
         fill(n, visitNBlock(x))
-        
+
+      case x @ NDef(_, f : NFn) =>
+        fill(n, visitNDefFn(x, f))
+
       case x : NDef =>
         fill(n, visitNDef(x))
         
@@ -102,7 +119,11 @@ class Transformer {
         
       case x : NRefAnon =>
         fill(n, visitNRefAnon(x))
-      case _ => 
+
+      case x : NClass =>
+        fill(n, visitNClass(x))
+
+      case _ =>
         n
     }
   }
@@ -147,6 +168,60 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
   }
 }
 
+
+/*
+ *
+ */
+class ClassMover(module: NModule) extends Transformer {
+
+  val classes = mutable.MutableList[Node]()
+
+  def apply() = {
+    val oldefs = visitNBlock(module.main.value).asInstanceOf[NBlock].children.filterNot(_==null)
+    val newdefs = classes.toList ++ oldefs
+    val newBlock = NBlock(newdefs)
+    val newf = NFn(module.main.params, fill(module.main.value, newBlock))
+    val m2 = NModule(module.name, module.imports, fill(module.main, newf))
+    fill(module, m2)
+  }
+
+  override def visitNBlock(n: NBlock) : Node = {
+    val innerclasses = n.children.collect { case x : NClass => x }
+    val newchildren = n.children.diff(innerclasses)
+    innerclasses foreach { k => classes.+=(visitNClass(k)) }
+    fill(n, NBlock(newchildren))
+  }
+
+  override def visitNClass(n: NClass): Node = {
+    val newblock = visitNBlock(n.block).asInstanceOf[NBlock]
+    fill(n, NClass(n.name, n.params, n.is, newblock))
+  }
+}
+
+
+/*
+ *
+ */
+class OverrideMover(module: NModule) extends Transformer {
+
+  val classes = mutable.MutableList[Node]()
+  val defs = mutable.MutableList[Node]()
+
+  def apply() = {
+    val oldefs = visitNBlock(module.main.value).asInstanceOf[NBlock].children.filterNot(_==null)
+    val newdefs = classes.toList ++ defs.toList ++ oldefs
+    val newblock = NBlock(newdefs)
+    val newf = NFn(module.main.params, fill(module.main.value, newblock))
+    val m2 = NModule(module.name, module.imports, fill(module.main, newf))
+    fill(module, m2)
+  }
+
+  override def visitNClass(n: NClass): Node = {
+    defs.++=(n.block.children)
+    classes.+=(fill(n, NClass(n.name, n.params, n.is, fill(n.block, NBlock(List())))))
+    null
+  }
+}
 
 /**
  * Transforms object-style calls

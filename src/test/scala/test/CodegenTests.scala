@@ -14,13 +14,10 @@ import runtime.Java
  */
 class CodegenTests extends FunSuite {
   
-  def intermediate(code: String) = {
-    val filename = "test"
-    val modulename = "test"
-    val code2 = "module " + modulename + "\n" + code
-    
+  def intermediate(filename: String, code: String) = {
+
     try {
-      val unit = Main.process(filename, code2)
+      val unit = Main.process(filename, code)
       val module = Intermediate.codegen(unit)
       println(module)
       val bytes = Codegen.codegen(module)
@@ -28,7 +25,8 @@ class CodegenTests extends FunSuite {
     } 
     catch {
       case e: TypeException =>
-        Main.showException(e, code2)
+        Main.showException(e, code)
+        throw e
     }
   }
   
@@ -41,7 +39,6 @@ class CodegenTests extends FunSuite {
     ty
   }
 
-
   def matches(in: Any, exp: String) = {
     val exp2 = "^" + exp.replace("(", "\\(").replace(")", "\\)") + "$"
     val r = exp.r.findFirstIn(in.toString)
@@ -51,15 +48,16 @@ class CodegenTests extends FunSuite {
     }
   }
 
-  /*
   test("Intermediate") { // manual test
-    val code = """
-      class Something(a Str) is Eq {
-        eq (a this, b Int) = true
-      }
+    val code1 = """
+      module module1
+
+      f() = { x => x - 1 }
+      g = f()
+      g(4)
+
       """
-    val res = intermediate(code)
+    val res = intermediate("module1", code1)
     println("matches = " + res)
   }
-  */
 }

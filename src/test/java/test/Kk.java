@@ -5,11 +5,11 @@ import runtime.Func;
 import runtime.Int;
 import runtime.Thing;
 
-public class Kk extends Thing {
+public class Kk extends Func {
 
-	private Thing a;
-
-	public Kk(Thing d) {
-        a = null;
+	public Kk() {
+        Kk a = new Kk();
+		a.initialize();
+		a.apply0();
 	}
 }
