@@ -104,6 +104,8 @@ class Klass(val name: String, val constructor: TypeScheme, val isas: List[Tycon]
 
   def localname = (if (namespace == null) "" else namespace + "$") + name
   def fullname = modulename + "/" + localname
+
+  def ctor = constructor.tpe.asInstanceOf[Tyfn]
 }
 class Interface(val name: String, val requirements : List[(String, Tyfn)]) {
   override def toString() = name + "{" + requirements.map{r => r._1 + ":" + r._2.repr}.mkString(",") + "}"
@@ -215,7 +217,9 @@ case class TypeScheme(tyvars: List[Tyvar], tpe: Ty) {
     (Typer3.emptySubst /: (tyvars zip tys)) ((s, tv) => s.extend(tv._1, tv._2)) (tpe)
   }
 }
-
+object TypeScheme {
+  def apply(ty: Ty) : TypeScheme = TypeScheme(Typer3.tyvars(ty), ty)
+}
 
 /**
  * Utility classes for code analysis

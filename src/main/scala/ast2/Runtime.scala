@@ -8,9 +8,8 @@ import java.net.{URL, URLClassLoader}
  * @author david
  */
 
-class VolatileClassLoader(urls: Array[URL]) extends ClassLoader {
+class VolatileClassLoader(default: ClassLoader) extends ClassLoader {
 
-  val default = URLClassLoader.newInstance(urls, this)
   val classes = scala.collection.mutable.Map[String, Class[_]]()
   
   def add(name: String, bytes: Array[Byte]) {
@@ -30,15 +29,7 @@ class VolatileClassLoader(urls: Array[URL]) extends ClassLoader {
 class Runtime {
 
   val parent = this.getClass.getClassLoader
-
-  val urls = if (parent.isInstanceOf[URLClassLoader]) {
-    parent.asInstanceOf[URLClassLoader].getURLs
-  }
-  else {
-    throw new RuntimeException("Can't handle non-URL class loaders")
-  }
-
-  val x = new VolatileClassLoader(urls)
+  val x = new VolatileClassLoader(parent)
   
   def register(pack: String, name: String, bytes: Array[Byte]) {
     val destination = new File("/tmp", pack)
@@ -61,4 +52,12 @@ class Runtime {
     k.getMethod("initialize").invoke(i)
     k.getMethod("apply0").invoke(i)    
   }
+
+  def classForName(name: String) =
+    try {
+      Class.forName(name)
+    }
+    catch {
+      case e: Exception => x.loadClass(name)
+    }
 }

@@ -5,7 +5,7 @@ file
     ;
 
 imp
-    : 'import' ID ('.' ID)+ ('as' alias=ID)?
+    : 'import' ID ('.' ID)? '.' what=(ID|CLASSID)
     ;
 
 block

@@ -25,10 +25,14 @@ case class CreateModule(
     classes: List[CreateClass],
     exports: List[Export])
     extends CodegenStep {
-  def repr(d: Int) = margin(d) + "Module " + name + " {\n" + showExports(d) + "\n" + childrepr(d) + "\n" + margin(d) + "}"
+  def repr(d: Int) = margin(d) + "Module " + name + " {\n" + showExports(d) + childrepr(d) + "\n" + margin(d) + "}"
   def children = functions ++ classes
   def exportedFunctions = exports // we don't have private and public functions yet
-  def showExports(d: Int) = exports.map { e => "Export " + e.name + " " + e.`type` + " " + e.overrides.mkString(" ") }.mkString(margin(d+1), "\n" + margin(d+1), "\n")
+  def showExports(d: Int) =
+    if (exports.isEmpty) ""
+    else exports.map { e =>
+      "Export " + e.name + " " + e.`type` + " " + e.overrides.mkString(" ") }
+      .mkString(margin(d+1), "\n" + margin(d+1), "\n" + margin(d))
 }
 case class CreateFunction(
     name: String,
@@ -230,6 +234,13 @@ case class InstanceField(
   def repr(d: Int) = margin(d) + "InstanceField " + classname + " " + fieldname + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
   def children = List(owner)
 }
+case class NewAnon(
+    name: String,
+    captures: List[CodegenStep])
+    extends CodeStep {
+  def repr(d: Int) = margin(d) + "NewAnon "  + name + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
+  def children = captures
+}
 object Intermediate {
   
   def codegenType(ty: Ty) = ty match {
@@ -297,23 +308,27 @@ object Intermediate {
         val name1 = v.isOverride._1.localname + "$" + name
         val local = flocal(name1, allLocals)
         Instantiate(destname, local)
+        /*
       case a @ NDefAnon(name, _) /* if (a.env.parent == function.root.value.env) */=>
         val destname = unit.module.name + "/" + name
         val local = flocal(name, allLocals)
         Instantiate(destname, local)
+
       case x @ NRefAnon(name) =>
         val destname = unit.module.name + "/" + name
         val local = flocal(name, allLocals)
         Instantiate(destname, local)
+        */
     }
     val initializations = function.root.value.children.collect {
       case NDef(name, v: NFn) if v.isOverride == null => createInitialize(unit, function, allLocals, captures, name, v.name)
       case NDef(name, v: NFn) if v.isOverride != null =>
         val name1 = v.isOverride._1.localname + "$" + name
         createInitialize(unit, function, allLocals, captures, name1, v.name)
-      case a @ NDefAnon(name, _) /* if (a.env.parent == function.root.value.env) */ => createInitialize(unit, function, allLocals, captures, name, name)
-      case x @ NRefAnon(name) => createInitialize(unit, function, allLocals, captures, name, name)
+      //case a @ NDefAnon(name, _) /* if (a.env.parent == function.root.value.env) */ => createInitialize(unit, function, allLocals, captures, name, name)
+      //case x @ NRefAnon(name) => createInitialize(unit, function, allLocals, captures, name, name)
     }
+
     val code = function.root.value.children.map { x =>
       translate(unit, function, allLocals, externs, captures, x) 
     }
@@ -327,9 +342,9 @@ object Intermediate {
         constants, 
         captures, 
         externs, 
-        locals, 
-        instantiations, 
-        initializations, 
+        locals,
+        instantiations,
+        initializations,
         code, 
         metadata)
   }
@@ -411,7 +426,10 @@ object Intermediate {
       val f = translate(unit, function, allLocals, externs, captures, exfalse)
       SIf(c, t, f)
       
-    case x @ NRefAnon(name) =>  
+    case x @ NRefAnon(name) =>
+
+
+      /*
       val local = findlocal(name, allLocals) 
       local match {
         case Some((name, _, i)) => Local(i)
@@ -420,10 +438,25 @@ object Intermediate {
             case Some(CreateExtern(name, ty, fullname)) => Extern(x.name)
             case None => captures.find(_.name == x.name) match {
               case Some(CreateCapture(name, ty)) => Capture(name)
-              case None => Constant(x.name)
-            }
-          }
-      }
+              case None =>
+              */
+
+                unit.unitFunctions.find(f => f.name == name) match {
+                  case None => throw new RuntimeException("Can't locate anonymous function " + name + ". This is a compiler bug")
+                  case Some(cuf) =>
+                    val args = cuf.captures.map { cap => translate(unit, function, allLocals, externs, captures, cap) }
+                    NewAnon(unit.module.name + "/" + name, args)
+                }
+
+
+                // Lookup anon function definition
+                // Lookup anon function captures
+                // Create new step "InstantiateAndInit" or so
+                ///Constant(x.name)
+                ///???
+            //}
+         // }
+      //}
 
     case x @ NInstantiation(cname, args) =>
       x.env.getClass(cname) match {
@@ -445,8 +478,8 @@ object Intermediate {
     CreateClass(k.localname, fields)
   }
 
-  def genExports(unit: CompilationUnit) =
-    unit.unitFunctions.map { uf =>
+  def genExports(unit: CompilationUnit) = {
+    val functionExports = unit.unitFunctions.map { uf =>
       val over = uf.root.isOverride
       if (over != null) (uf.root.defname, uf.unit.module.name + "." + uf.name)
       else (uf.root.defname, uf.unit.module.name + "." + uf.name)
@@ -458,11 +491,17 @@ object Intermediate {
             val ty = ts.tpe.repr
             val overs = x._2.map(z => z._2).toArray
             new Export(name, ty, overs)
-
           case None => null
         }
       }.filterNot(_ == null)
       .toList
+
+    val classExports : List[Export] = unit.classes.map { k =>
+      new Export(k.name, k.ctor.repr, Array())
+    }
+
+    functionExports ++ classExports
+  }
 
   def codegen(unit: CompilationUnit) = {
     val functions = unit.unitFunctions.map { uf =>

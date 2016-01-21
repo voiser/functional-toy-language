@@ -56,6 +56,7 @@ class ClassesTests extends FunSuite {
       """
     try {
       run(code)
+      fail()
     }
     catch {
       case e : TypeException =>
@@ -71,6 +72,7 @@ class ClassesTests extends FunSuite {
       """
     try {
       run(code)
+      fail()
     }
     catch {
       case e : TypeException =>
@@ -86,11 +88,55 @@ class ClassesTests extends FunSuite {
       """
     try {
       run(code)
+      fail()
     }
     catch {
       case e : TypeException =>
         assert(e.getMessage.contains("Incompatible types"))
     }
+  }
+
+  test("Syntactic sugar in variables and tyvars") {
+    val code = """
+      class Box(x) is Set[x] {
+        size(this) = 1
+      }
+      size(Box(9))
+      """
+    val ret = run(code)
+    assert("1" == ret.toString())
+  }
+
+  test("Captures in classes") {
+    val code = """
+      a = 1
+      class Box(x) is Set[x] {
+        b = 2
+        size(this) = a + b
+      }
+      size(Box(9))
+      """
+    val ret = run(code)
+    assert("3" == ret.toString())
+  }
+
+  test("Dynamic dispatch") {
+    val code = """
+      a = 1
+      class Box(x) is Set[x] {
+        b = 2
+        size(this) = a + b
+      }
+
+      class Xob(x) is Set[x] {
+        b = 3
+        size(this) = a + b
+      }
+
+      [ size(Box(9)), size(Xob(10)) ]
+      """
+    val ret = run(code)
+    assert("[3, 4]" == ret.toString())
   }
 }
 

@@ -272,8 +272,7 @@ object Codegen {
       mv: MethodVisitor,
       ex: Initialize,
       stack: Stack) {
-    
-    
+
     mv.visitVarInsn(ALOAD, ex.index)
     mv.visitTypeInsn(CHECKCAST, ex.name)
         
@@ -497,6 +496,27 @@ object Codegen {
         mv.visitTypeInsn(CHECKCAST, classname)
         mv.visitFieldInsn(GETFIELD, classname, fieldname, JTHING)
         stack.push
+
+      case NewAnon(cname, args) =>
+        {
+          val signature = "()V"
+          mv.visitTypeInsn(NEW, cname)
+          stack.push
+          mv.visitInsn(DUP)
+          stack.push
+          mv.visitMethodInsn(INVOKESPECIAL, cname, "<init>", signature, false)
+          stack.pop
+        }
+        {
+          mv.visitInsn(DUP)
+          stack.push
+          args.foreach { arg =>
+            add(module, uf, mv, arg, stack)
+          }
+          val ncaptures = args.length
+          val j = JTHING * ncaptures
+          mv.visitMethodInsn(INVOKEVIRTUAL, cname, "initialize", "(" + j + ")V", false)
+        }
     }
   }
   

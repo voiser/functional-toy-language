@@ -248,3 +248,53 @@ class ObjCallTransformer(module: NModule) extends Transformer {
     }
   }
 }
+
+
+
+class ClassConstantRenamer(module: NModule) extends Transformer {
+
+  class Renamer(k: NClass, prefix:String) extends Transformer {
+    val subs = scala.collection.mutable.Map[String, String]()
+
+    def apply() : NClass = {
+      NClass(k.name, k.params, k.is, visit(k.block).asInstanceOf[NBlock])
+    }
+
+    override def visitNDef(n: NDef): Node = {
+      n.env.introducedBy match {
+        case NClass(name, _, _, _) =>
+          val newname =
+            if (prefix == null) name + "$$" + n.name
+            else prefix + "$" + name + "$$" + n.name
+          subs.put(n.name, newname)
+          val env = n.env
+          env.put(newname, env.get(n.name).get)
+          NDef(newname, visit(n.value))
+        case _ => n
+      }
+    }
+
+    override def visitNRef(n: NRef): Node = {
+      subs.get(n.name) match {
+        case None => super.visitNRef(n)
+        case Some(t) => NRef(t)
+      }
+    }
+
+    override def visitNClass(n: NClass) : Node = {
+      val newprefix =
+        if (prefix == null) k.name
+        else prefix + "$" + k.name
+      new Renamer(n, newprefix).apply()
+    }
+
+  }
+
+  def apply() : NModule = {
+    visitNModule(module).asInstanceOf[NModule]
+  }
+
+  override def visitNClass(n: NClass) : Node = {
+    new Renamer(n, null).apply()
+  }
+}

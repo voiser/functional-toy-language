@@ -212,70 +212,75 @@ class AnonymousFunctionNamerVisitor(module: NModule) extends Visitor {
 
 
 /**
- * Accumulates a reference to each symbols defined in a parent environment.
- * Basically, it locates captured symbols
- */
-class FetchRefsVisitor(root: NFn) extends Visitor {
-
-  val captured = scala.collection.mutable.ArrayBuffer[NodeRef]()  //val intro = scala.collection.mutable.ArrayBuffer[NRef]()
-
-  val myvars = root.value.children.collect {
-    case NDef(name, v) => NRef(name)
-    case NDefAnon(name, v) => NRefAnon(name)
-  }
-  visit(root.value)
-
-  def captures = captured.diff(myvars)
-  
-  override def visitNRef(n: NRef) {
-    val e1 = n.env
-    val e2 = n.env.locate(n.name)
-    if (e1.isChildOf(e2) && (e2.parent != null)) {
-      if (root.defname == n.name) {
-        n.isRecursive = true
-      }
-      else {
-        captured += n
-      }
-    }
-  }
-  
-  override def visitNRefAnon(n: NRefAnon) {
-    captured += n
-  }
-  
-  override def visitNApply(n: NApply) {
-    val e1 = n.env
-    val e2 = n.env.locate(n.name)
-    if (e1.isChildOf(e2) && (e2.parent != null)) {
-      val r = NRef(n.name)
-      r.env = e1
-      r.ctx = n.ctx
-      r.ty = e1.get(n.name).get.tpe
-      if (root.defname == n.name) {
-        n.isRecursive = true
-      }
-      else {
-        captured += r
-      }
-    }
-  }
-}
-
-
-/**
  * Extracts all functions in a module, listing all references in each function
  */
 class FunctionVisitor(module: NModule) extends Visitor {
-  
+
   val functions = scala.collection.mutable.ArrayBuffer[Function]()
   visit(module.main)
-  
+
   override def visitNFn(n: NFn) {
-    val v = new FetchRefsVisitor(n)
+    val v = new FetchRefsVisitor(module, n)
     val r = Function(n, v.captures.toList)
     functions += r
     super.visitNFn(n)
+  }
+
+  /**
+    * Accumulates a reference to each symbols defined in a parent environment.
+    * Basically, it locates captured symbols
+    */
+  class FetchRefsVisitor(module: NModule, root: NFn) extends Visitor {
+
+    val captured = scala.collection.mutable.ArrayBuffer[NodeRef]()  //val intro = scala.collection.mutable.ArrayBuffer[NRef]()
+
+    val myvars = root.value.children.collect {
+      case NDef(name, v) => NRef(name)
+      case NDefAnon(name, v) => NRefAnon(name)
+    }
+
+    visit(root.value)
+
+    def captures = captured.diff(myvars)
+
+    override def visitNRef(n: NRef) {
+      val e1 = n.env
+      val e2 = n.env.locate(n.name)
+      if (e1.isChildOf(e2) && (e2.parent != null) && root.env.isChildOf(e2)) {
+        if (root.defname == n.name) {
+          n.isRecursive = true
+        }
+        else {
+          captured += n
+        }
+      }
+    }
+
+    override def visitNRefAnon(n: NRefAnon) {
+      module.main.value.children.foreach {
+        case x @ NDefAnon(n.name, fn : NFn) =>
+          val caps = new FetchRefsVisitor(module, fn).captures
+          captured ++= caps
+        case _ =>
+      }
+    }
+
+    override def visitNApply(n: NApply) {
+      val e1 = n.env
+      val e2 = n.env.locate(n.name)
+      if (e1.isChildOf(e2) && (e2.parent != null) && root.env.isChildOf(e2)) {
+        val r = NRef(n.name)
+        r.env = e1
+        r.ctx = n.ctx
+        r.ty = e1.get(n.name).get.tpe
+        if (root.defname == n.name) {
+          n.isRecursive = true
+        }
+        else {
+          captured += r
+        }
+      }
+    }
   }
 }
 

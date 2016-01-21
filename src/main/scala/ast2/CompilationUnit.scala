@@ -85,6 +85,7 @@ class CompilationUnit(
               localmap.put(name, l)
               (name, v, l)
           }
+          /*
         case a @ NDefAnon(name, v) /*if (a.env.parent == root.value.env)*/ =>
           l = l + 1
           localmap.put(name, l)
@@ -98,23 +99,9 @@ class CompilationUnit(
               localmap.put(name, l)
               (name, a, l)
           }
+          */
       }
       val locals1 = locals0.filter(_ != null)
-
-      /*
-      val locals1Names = locals1.map(_._1)
-      val localOvers = localOverrides.find(e => e.function == f.function).get.symbols.map { over =>
-        val name = over.node.name
-        if (locals1Names.contains(name)) {
-          null
-        }
-        else {
-          l = l + 1
-          localmap.put(name, l)
-          (name, over.node, l)
-        }
-      }.filter(_ != null)
-      */
 
       val locals = locals1 /* ++ localOvers */
 

@@ -4,24 +4,21 @@ import org.scalatest.FunSuite
 import ast2._
 import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
-import java.lang.reflect.InvocationTargetException
 import intermediate.Intermediate
-import org.xml.sax.helpers.NewInstance
-import runtime.Java
 
 /**
  * @author david
  */
 class CodegenTests extends FunSuite {
   
-  def intermediate(filename: String, code: String) = {
+  def intermediate(filename: String, code: String, runtime: Runtime) = {
 
     try {
-      val unit = Main.process(filename, code)
+      val unit = Main.process(filename, code, runtime)
       val module = Intermediate.codegen(unit)
       println(module)
       val bytes = Codegen.codegen(module)
-      Main.execute(unit.module.name, bytes)
+      Main.execute(unit.module.name, bytes, runtime)
     } 
     catch {
       case e: TypeException =>
@@ -49,15 +46,17 @@ class CodegenTests extends FunSuite {
   }
 
   test("Intermediate") { // manual test
+    val runtime = new Runtime()
     val code1 = """
-      module module1
+      module test
 
-      f() = { x => x - 1 }
-      g = f()
-      g(4)
+      a = 1
+      f(x) = { y => y + x + a }
+      g = f(1)
+      g(2)
 
       """
-    val res = intermediate("module1", code1)
-    println("matches = " + res)
+    val res1 = intermediate("test", code1, runtime)
+    println("matches = " + res1)
   }
 }

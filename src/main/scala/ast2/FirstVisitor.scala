@@ -146,7 +146,7 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   override def visitFile(ctx: GrammarParser.FileContext) = {
     val f = fill(NFn(List(), visitBlock(ctx.block())), ctx)
     val imports = ctx.imp().asScala.toList.map { x =>
-      val list = x.ID.asScala.toList.map{_.getText}
+      val list = x.ID.asScala.toList.map{_.getText} ++ (if (x.CLASSID() == null) List() else List(x.CLASSID().getText))
       val (pack, fname) = (list.init.mkString("."), list.last)
       (pack, fname)
     }
@@ -178,12 +178,11 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   }
 
   override def visitKlass(ctx: GrammarParser.KlassContext) = {
-    val gen = new TyvarGenerator("a")
     def getKlassvar(ctx: GrammarParser.KlassvarContext) = {
       val name = ctx.ID().getText
       val ty =
         if (ctx.tydef() != null) getTy(ctx.tydef)
-        else GTyvar(gen.get().name, List())
+        else GTyvar(name, List())
       (name, ty)
     }
     val name = ctx.CLASSID().getText

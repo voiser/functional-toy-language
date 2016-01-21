@@ -226,7 +226,7 @@ object Main {
   /*
    * Build the initial code representation
    */
-  def stageZero(filename: String, code: String, env: Env) : NModule = {
+  def stageZero(filename: String, code: String, env: Env, runtime: Runtime) : NModule = {
     // Build the CST
     val lexer = new GrammarLexer(new ANTLRInputStream(code))
     val parser = new GrammarParser(new CommonTokenStream(lexer))
@@ -244,7 +244,7 @@ object Main {
     module.imports.foreach {
       case (pack, fname) =>
 
-        val moduleClass = Class.forName(pack + ".main")
+        val moduleClass = runtime.classForName(pack + ".main") //Class.forName(pack + ".main")
         val exports = moduleClass.getField("exports").get(null).asInstanceOf[Array[Export]].toList
 
         val export = exports.find { _.name == fname } match {
@@ -253,25 +253,42 @@ object Main {
 
         }
 
-        val genericType = export.`type`
-
-        // Register the generic function
-        env.get(fname) match {
-          case Some(_) =>
-          case None =>
-            // first import
-            registerFn(fname, genericType)(env)
-        }
-
+        val genericType = tyfn(export.`type`)
         val overs = export.overrides
 
-        overs.foreach { over =>
-          val klass = Class.forName(over)
-          val field = klass.getField("type")
-          val functype = field.get(null).asInstanceOf[String]
-          val parsed = parseType(functype)
-          val tyvars = Typer3.tyvars(parsed)
-          registerOverride(over.replace(".", "/"), fname, parsed.repr)(env)
+        if (overs.isEmpty) {
+          // We are importing a class
+          // TODO: when creating a "Whatever.class", export its member information
+          val klass = runtime.classForName(pack + "." + fname)
+          val isas = klass.getField("isa").get(null).asInstanceOf[Array[String]].toList.map(Tycon(_))
+          val theKlass = new Klass(fname, TypeScheme(genericType), isas)
+          theKlass.modulename = pack
+          val fields = klass.getField("fields").get(null).asInstanceOf[Array[String]].map { f =>
+            val tokens = f.split(":")
+            Field(tokens(0).trim, parseType(tokens(1)))
+          }
+          theKlass.fields.++=(fields)
+          registerTy(pack + "/" + fname, genericType.out.repr, isas.map{_.repr})(env)
+          env.putClass(theKlass)
+          env.put(fname, genericType)
+        }
+        else {
+          // we are importing a function
+          // Register the generic function
+          env.get(fname) match {
+            case Some(_) =>
+            case None =>
+              // first import
+              registerFn(fname, genericType.repr)(env)
+          }
+          overs.foreach { over =>
+            val klass = runtime.classForName(over)
+            val field = klass.getField("type")
+            val functype = field.get(null).asInstanceOf[String]
+            val parsed = parseType(functype)
+            val tyvars = Typer3.tyvars(parsed)
+            registerOverride(over.replace(".", "/"), fname, parsed.repr)(env)
+          }
         }
     }
 
@@ -305,14 +322,26 @@ object Main {
   /*
    * Convert object-style calls
    */
-  class stageObjectStyle(env: Env) extends Function1[NModule, NModule] {
+  class stageObjectStyle(env: Env, code: String) extends Function1[NModule, NModule] {
     def apply(module: NModule) = {
       val ret = new ObjCallTransformer(module).apply()
       // show(ret.main, code)
       ret
     }
   }
-  
+
+
+  /*
+   * Rename class constants
+   */
+  class stageClassConstants(env: Env, code: String) extends Function1[NModule, NModule] {
+    def apply(module: NModule) = {
+      // show(module.main, code)
+      val ret = new ClassConstantRenamer(module).apply()
+      // show(ret.main, code)
+      ret
+    }
+  }
   
   /*
    * Performs some transformations on functions
@@ -329,9 +358,8 @@ object Main {
       // show(module.main, code)
       val ret1 = new AnonymousFunction2LocalTransformer(module, anonFuncs.toList).apply()
       val ret2 = new ClassMover(ret1).apply()
-      //show(ret2.main, code)
       val ret = new OverrideMover(ret2).apply()
-      //show(ret.main, code)
+      // show(ret.main, code)
       ret
     }
   }
@@ -363,19 +391,6 @@ object Main {
         else List()
       Extern(f.function, externs)
     }
-
-    // println("Externs = " + externs)
-
-    /*
-    val localOvers = funcs.map { f =>
-      val allovers = new OverVisitor(f.function).allovers
-      val split = allovers.groupBy(_.isLocal)
-      val externs =
-        if (split.contains(true)) split(true)
-        else List()
-      Extern(f.function, externs)
-    }
-    */
     // Extract all defined classes
     val classes = new ClassExtractor(module).classes
     // The final compilation unit.
@@ -386,16 +401,19 @@ object Main {
   /*
    * Parses, types and transforms a source file into a CompilationUnit
    */
-  def process(filename: String, code: String) = {
+  def process(filename: String, code: String) : CompilationUnit = process(filename, code, new Runtime())
+  def process(filename: String, code: String, runtime: Runtime) : CompilationUnit = {
     val env = rootEnv
     val stages = List(
         new stageType(env, code),
         new stageCheckInterfaces(env, code),
-        new stageObjectStyle(env),
+        new stageObjectStyle(env, code),
+        new stageClassConstants(env, code),
         new stageTransformFunctions(env, code),
         new stageGenerateOverrides(env, code))
-    val module0 = stageZero(filename, code, env)
+    val module0 = stageZero(filename, code, env, runtime)
     val module = stages.foldLeft(module0) { (module, stage) => stage(module) }
+    //show(module.main, code)
     val unit = stageGenerateUnit(filename, module)
     unit
   }
@@ -404,8 +422,8 @@ object Main {
   /*
    * Executes a module
    */
-  def execute(module: String, bytes: List[(String, String, Array[Byte])]) = {
-    val runtime = new Runtime()
+  def execute(module: String, bytes: List[(String, String, Array[Byte])]) : Any = execute(module, bytes, new Runtime())
+  def execute(module: String, bytes: List[(String, String, Array[Byte])], runtime: Runtime) : Any = {
     bytes.foreach { x =>
       runtime.register(x._1, x._2, x._3)
     }
