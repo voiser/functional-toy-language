@@ -84,6 +84,10 @@ class Transformer {
     NDef(d.name, visit(f))
   }
 
+  def visitNInstantiation(n : NInstantiation): Node = {
+    NInstantiation(n.className, n.params map visit)
+  }
+
   def visit(n: Node) : Node = {
     n match {
       
@@ -123,6 +127,9 @@ class Transformer {
       case x : NClass =>
         fill(n, visitNClass(x))
 
+      case x : NInstantiation =>
+        fill(n, visitNInstantiation(x))
+
       case _ =>
         n
     }
@@ -146,7 +153,7 @@ class AnonymousFunction2LocalTransformer(module: NModule, anons: List[NFn]) exte
   val anonNames = anons.map { x => x.name }
   
   def apply() : NModule = {
-    val main2 = visitNFn(module.main).asInstanceOf[NFn] 
+    val main2 = visitNFn(module.main).asInstanceOf[NFn]
     val newdefs = anons.map { a =>
       fill(a, NDefAnon(a.name, a))
     }
