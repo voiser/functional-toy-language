@@ -85,21 +85,10 @@ class CompilationUnit(
               localmap.put(name, l)
               (name, v, l)
           }
-          /*
-        case a @ NDefAnon(name, v) /*if (a.env.parent == root.value.env)*/ =>
+        case NDef(name, v : NIf) =>
           l = l + 1
           localmap.put(name, l)
           (name, v, l)
-        case a @ NRefAnon(name) =>
-          localmap.get(name) match {
-            case Some(int) =>
-              null
-            case None => 
-              l = l + 1
-              localmap.put(name, l)
-              (name, a, l)
-          }
-          */
       }
       val locals1 = locals0.filter(_ != null)
 

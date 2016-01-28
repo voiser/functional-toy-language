@@ -50,9 +50,10 @@ class CodegenTests extends FunSuite {
     val code1 = """
       module test
 
-      class Agent(onReceive)
+      class Some(x)
+      class None(x)
 
-      Agent({ x => x + 1 })
+
 
       """
     val res1 = intermediate("test", code1, runtime)

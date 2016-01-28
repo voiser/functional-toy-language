@@ -748,7 +748,7 @@ object Typer3 {
         }
         val klass = env.getClass(className) match {
           case Some(k) => k
-          case None => throw new TypeException("This is a compiler bug", n, trace)
+          case None => throw new TypeException("Can't access field " + field + " of class " + s1(o).repr, n, trace)
         }
         val ctor = klass.constructor.tpe match {
           case x : Tyfn => x
@@ -762,6 +762,49 @@ object Typer3 {
         val fieldty = ss(f.ty)
         z.klass = klass
         unify(t, fieldty, s, n)
+
+
+      /*
+       *
+       */
+      case NMatch(source, pattern, block) =>
+        val a = gen.get()
+        val s1 = tp(env, source, a, s)
+        val sourcety = s1(a) match {
+          case x : Tycon  => x
+          case x : Ty => throw new TypeException("Trying to match a non-class value " + x.repr, n, trace)
+        }
+        val patty = tyForPattern(n, pattern)
+
+        pattern match {
+
+          case _:PVar => ???
+
+          case PClass(_, name, params) =>
+            val klass = env.getClass(name) match {
+              case Some(k) => k
+              case None => throw new TypeException("Unknown class " + name, n, trace)
+            }
+            val ctor = Tycon(name, tyvars(klass.ctor))
+            val canonic = Tycon(name, klass.ctor.in)
+            val selma = try {
+              unify(ctor, sourcety, emptySubst, n)
+            }
+            catch {
+              case e : TypeException =>
+                exception("Value and pattern can't match", n)
+            }
+            val ctor2 = selma(Tycon(name, klass.ctor.in))
+            val s2 = unify(patty, ctor2, selma, n)
+            val marge = s2(patty).asInstanceOf[Tycon]
+            val env1 = Env(env, n)
+            (tyvars(patty) zip marge.types).foreach {
+              case (ta,tb) => env1.put(ta.name, tb)
+            }
+            val b = gen.get()
+            val s3 = tp(env1, block, b, s)
+            unify(t, b, s3, n)
+        }
     }
     n.ty = tysub(t)
     tysub
@@ -771,6 +814,11 @@ object Typer3 {
    * Utility function to append a new trace element to an already existing trace
    */
   def mktrace(t: String, n: Node, trace: List[TraceElement]) = TraceElement(t, n) :: trace
+
+  def tyForPattern(n: Node, pattern: Pattern) : Ty = pattern match {
+    case PVar(_, name) => Tyvar(name, List())
+    case PClass(_, name, params) =>  Tycon(name, params map (tyForPattern(n, _)))
+  }
 
   /**
    * It all starts here.

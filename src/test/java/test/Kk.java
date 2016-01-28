@@ -7,9 +7,14 @@ import runtime.Thing;
 
 public class Kk extends Func {
 
+	public Thing a;
+	public Thing b;
+
 	public Kk() {
-        Kk a = new Kk();
-		a.initialize();
-		a.apply0();
+	}
+
+	@Override
+	public String[] repr() {
+		return new String[] { a.toString(), b.toString() };
 	}
 }

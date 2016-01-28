@@ -21,7 +21,7 @@ public class Dict extends Thing {
 		return m;
 	}
 	
-	public String repr() {
+	public String myrepr() {
 		StringBuilder sb = new StringBuilder();
 		
 		Iterator<Thing> it = map.keySet().iterator();
@@ -36,7 +36,7 @@ public class Dict extends Thing {
 	
 	@Override
 	public String toString() {
-		return "[" + repr() + "]";
+		return "[" + myrepr() + "]";
 	}
 	
 	public static class size extends Func {

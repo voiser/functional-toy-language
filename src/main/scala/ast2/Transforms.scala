@@ -88,6 +88,10 @@ class Transformer {
     NInstantiation(n.className, n.params map visit)
   }
 
+  def visitNMatch(n: NMatch): Node = {
+    NMatch(visit(n.source), n.pattern, visit(n.exp))
+  }
+
   def visit(n: Node) : Node = {
     n match {
       
@@ -129,6 +133,9 @@ class Transformer {
 
       case x : NInstantiation =>
         fill(n, visitNInstantiation(x))
+
+      case x : NMatch =>
+        fill(n, visitNMatch(x))
 
       case _ =>
         n
@@ -305,3 +312,67 @@ class ClassConstantRenamer(module: NModule) extends Transformer {
     new Renamer(n, null).apply()
   }
 }
+
+
+class MatchTransformer(module: NModule) extends Transformer {
+
+  var nvar = 0
+
+  def apply() = {
+    visit(module).asInstanceOf[NModule]
+  }
+
+  def convertMatch(n: NMatch) : NMatch = {
+    n.pattern match {
+      case PClass(ctx, name, params) =>
+        params.collectFirst { case x : PClass => x } match {
+          case None => n
+          case Some(p) =>
+            nvar = nvar + 1
+            val newvar = "$m" + nvar
+            val z = params.map { q =>
+              if (p == q) PVar(p.ctx, newvar)
+              else q
+            }
+            val nref = NRef(newvar)
+            nref.filename = n.filename
+            nref.ctx = n.ctx
+            /*
+            val newblock = fill(n.block, NBlock(List(convertMatch(fill(n, NMatch(nref, p, n.block))))))
+            val nmatch = fill(n, NMatch(n.source, PClass(p.ctx, name, z), newblock))
+            */
+
+            val nmatch = fill(n, NMatch(n.source, PClass(p.ctx, name, z), fill(n.exp, convertMatch(fill(n, NMatch(nref, p, n.exp))))))
+            convertMatch(nmatch)
+        }
+    }
+  }
+
+  override def visitNMatch(n: NMatch): Node = {
+    println("Hey, I have a match!")
+    convertMatch(n)
+  }
+}
+
+
+
+
+
+
+/*
+    if a is Class(x, Class(a, Class(j, k, l), c), Class(d, e, f)) then f
+ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+

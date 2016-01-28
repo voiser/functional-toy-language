@@ -15,13 +15,13 @@ public class List extends Thing {
 		this.tail = tail;
 	}
 	
-	public String repr() {
-		return head + (tail instanceof Nil ? "" : ", " + tail.repr());
+	public String myrepr() {
+		return head + (tail instanceof Nil ? "" : ", " + tail.myrepr());
 	}
 	
 	@Override
 	public String toString() {
-		return "[" + repr() + "]";
+		return "[" + myrepr() + "]";
 	}
 	
 	public static class size extends Func {

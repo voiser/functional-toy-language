@@ -4,8 +4,7 @@ import scala.collection.JavaConverters._
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
-import ast2.GrammarParser.ExpressionContext
-import ast2.GrammarParser.ForwardContext
+import ast2.GrammarParser.{MatchexpContext, MatchContext, ExpressionContext, ForwardContext}
 
 /**
  * @author david
@@ -198,6 +197,24 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     val className = ctx.CLASSID().getText
     val params = ctx.expression().asScala.toList map visitExpression
     fill(NInstantiation(className, params), ctx)
+  }
+
+  override def visitMatch(ctx: MatchContext) = {
+    val source = visitExpression(ctx.source)
+    val pattern = visitPatt(ctx.matchexp())
+    val exp = visitExpression(ctx.exp)
+    fill(NMatch(source, pattern, exp), ctx)
+    /*
+    val block =
+      if (ctx.block() != null) visitBlock(ctx.block())
+      else fill(NBlock(List(visitExpression(ctx.exp))), ctx)
+    fill(NMatch(source, pattern, block), ctx)
+    */
+  }
+
+  def visitPatt(ctx: MatchexpContext) : Pattern = {
+    if (ctx.ID() != null) PVar(ctx, ctx.ID().getText)
+    else PClass(ctx, ctx.CLASSID().getText, ctx.matchexp().asScala.toList map visitPatt)
   }
 }
 

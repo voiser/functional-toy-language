@@ -18,6 +18,7 @@ expression
     | apply
     | ref
     | cond
+    | match
     | '(' exp=expression ')'
     | list
     | map
@@ -97,6 +98,15 @@ klassparent
 
 instantiation
     : CLASSID '(' (expression (',' expression)*)? ')'
+    ;
+
+match
+    : 'if' source=expression 'is' matchexp 'then' exp=expression
+    ;
+
+matchexp
+    : CLASSID '(' (matchexp (',' matchexp)*)? ')'
+    | ID
     ;
 
 ID

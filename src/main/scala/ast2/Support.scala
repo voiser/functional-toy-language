@@ -1,5 +1,6 @@
 package ast2
 
+import ast2.GrammarParser.MatchexpContext
 import org.antlr.v4.runtime.ParserRuleContext
 
 /**
@@ -28,6 +29,16 @@ case class GTycon(name: String, params: List[GTy]) extends GTy
 case class GTyfn(lefts: List[GTy], right: GTy) extends GTy
 case class GTyvar(name: String, restrictions: List[GTy]) extends GTy
 
+/**
+ * Represents a pattern
+ */
+abstract class Pattern(ctx: MatchexpContext)
+case class PVar(ctx: MatchexpContext, name: String) extends Pattern(ctx) {
+  override def toString: String = name
+}
+case class PClass(ctx: MatchexpContext, name: String, params: List[Pattern]) extends Pattern(ctx) {
+  override def toString: String = name + (params map (_.toString)).mkString("(", ",", ")")
+}
 
 /**
  * The syntax tree
@@ -86,6 +97,7 @@ case class NInstantiation(className: String, params: List[Node]) extends Node
 case class NField(owner: Node, field: String) extends Node {
   var klass : Klass = null
 }
+case class NMatch(source: Node, pattern: Pattern, exp: Node) extends Node
 
 
 /**

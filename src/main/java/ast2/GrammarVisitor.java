@@ -124,4 +124,16 @@ public interface GrammarVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitInstantiation(GrammarParser.InstantiationContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#match}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMatch(GrammarParser.MatchContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GrammarParser#matchexp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMatchexp(GrammarParser.MatchexpContext ctx);
 }

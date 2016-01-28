@@ -308,25 +308,12 @@ object Intermediate {
         val name1 = v.isOverride._1.localname + "$" + name
         val local = flocal(name1, allLocals)
         Instantiate(destname, local)
-        /*
-      case a @ NDefAnon(name, _) /* if (a.env.parent == function.root.value.env) */=>
-        val destname = unit.module.name + "/" + name
-        val local = flocal(name, allLocals)
-        Instantiate(destname, local)
-
-      case x @ NRefAnon(name) =>
-        val destname = unit.module.name + "/" + name
-        val local = flocal(name, allLocals)
-        Instantiate(destname, local)
-        */
     }
     val initializations = function.root.value.children.collect {
       case NDef(name, v: NFn) if v.isOverride == null => createInitialize(unit, function, allLocals, captures, name, v.name)
       case NDef(name, v: NFn) if v.isOverride != null =>
         val name1 = v.isOverride._1.localname + "$" + name
         createInitialize(unit, function, allLocals, captures, name1, v.name)
-      //case a @ NDefAnon(name, _) /* if (a.env.parent == function.root.value.env) */ => createInitialize(unit, function, allLocals, captures, name, name)
-      //case x @ NRefAnon(name) => createInitialize(unit, function, allLocals, captures, name, name)
     }
 
     val code = function.root.value.children.map { x =>

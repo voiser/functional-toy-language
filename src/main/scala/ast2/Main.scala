@@ -297,13 +297,31 @@ object Main {
 
 
   /*
+   * Transform:
+   *   if a is AA(x, BB(y)) then { ... }
+   * into:
+   *   if a is AA(x, _0) then
+   *     if _0 is BB(y) then
+   *       {...}
+   */
+  class stageTransformMatches(env: Env, code: String) extends Function1[NModule, NModule] {
+    def apply(module: NModule) = {
+      // show(module.main, code)
+      val ret = new MatchTransformer(module).apply()
+      // show(ret.main, code)
+      ret
+    }
+  }
+
+
+  /*
    * Type the AST
    */
   class stageType(env: Env, code: String) extends Function1[NModule, NModule] {
     def apply(module: NModule) = {
       module.main.fwdty = Tyfn(List(), Tyvar("a", List()))
       Typer3.getType(env, module.main)
-      // show(module.main, code)
+      show(module.main, code)
       module
     }
   }
@@ -405,6 +423,7 @@ object Main {
   def process(filename: String, code: String, runtime: Runtime) : CompilationUnit = {
     val env = rootEnv
     val stages = List(
+        new stageTransformMatches(env, code),
         new stageType(env, code),
         new stageCheckInterfaces(env, code),
         new stageObjectStyle(env, code),
@@ -491,6 +510,11 @@ object Main {
           rep("new " + name)
           params.foreach { x => show0(x, d+1) }
 
+        case x @ NMatch(source, pattern, block) =>
+          rep("match " + pattern)
+          show0(source, d+1)
+          show0(block, d+1)
+
         case _ =>
           rep(n.toString())
       }
@@ -511,12 +535,18 @@ object Main {
   }
   
   def showException(e: TypeException, code: String) = {
-    val codelines = code.split("\n")
-    println("\n** Type error **")
-    showLine(codelines, e.getMessage, e.node)
-    e.trace.reverse.foreach { x =>
-      showLine(codelines, x.message, x.node)
+    try {
+      val codelines = code.split("\n")
+      println("\n** Type error **")
+      showLine(codelines, e.getMessage, e.node)
+      e.trace.reverse.foreach { x =>
+        showLine(codelines, x.message, x.node)
+      }
+      println()
     }
-    println()
+    catch {
+      case e2 : Throwable =>
+        throw e
+    }
   }
 }

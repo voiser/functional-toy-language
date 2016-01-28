@@ -611,7 +611,7 @@ object Codegen {
     mv.visitMaxs(60, 60)
     mv.visitEnd()
   }
-  
+
   /**
    * Adds a static field containing the exported functions
    */
@@ -715,6 +715,58 @@ object Codegen {
   }
 
   /**
+   * add a repr() method to a class in a module
+   */
+  def addRepr(cw: ClassWriter, module: CreateModule, c: CreateClass): Unit = {
+
+    val sn = slashedName(module, c)
+    val mv = cw.visitMethod(ACC_PUBLIC, "repr", "()[Ljava/lang/String;", null, null)
+    mv.visitCode()
+
+    val stack = new Stack()
+
+    mv.visitLdcInsn(new Integer(c.fields.length + 2)) // those 2 are "class(" and ")"
+    stack.push
+    mv.visitTypeInsn(ANEWARRAY, "java/lang/String")
+
+    mv.visitInsn(DUP)
+    stack.push
+    mv.visitLdcInsn(new Integer(0))
+    stack.push
+    mv.visitLdcInsn(c.name + "(")
+    stack.push
+    mv.visitInsn(AASTORE)
+    stack pop 3
+
+    c.fields.zipWithIndex.foreach { case (f, i) =>
+      mv.visitInsn(DUP)
+      stack.push
+      mv.visitLdcInsn(new Integer(i + 1))
+      stack.push
+      mv.visitVarInsn(ALOAD, 0)
+      stack.push
+      mv.visitFieldInsn(GETFIELD, sn, f.name, JTHING)
+      mv.visitMethodInsn(INVOKEVIRTUAL, THING, "toString", "()Ljava/lang/String;", false)
+      stack.pop
+      mv.visitInsn(AASTORE)
+      stack pop 3
+    }
+
+    mv.visitInsn(DUP)
+    stack.push
+    mv.visitLdcInsn(new Integer(c.fields.length + 1))
+    stack.push
+    mv.visitLdcInsn(")")
+    stack.push
+    mv.visitInsn(AASTORE)
+    stack pop 3
+
+    mv.visitInsn(ARETURN)
+    mv.visitMaxs(stack.maxdepth + 1, 1)
+    mv.visitEnd()
+  }
+
+  /**
    * Generates a Java class for a class in a module
    */
   def genclass(module: CreateModule, c: CreateClass) = {
@@ -723,6 +775,7 @@ object Codegen {
 
     addFields(cw, module, c)
     addConstructor(cw, module, c)
+    addRepr(cw, module, c)
     cw.visitEnd()
     cw.toByteArray()
 

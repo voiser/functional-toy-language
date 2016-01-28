@@ -39,4 +39,9 @@ public abstract class Func extends Thing {
     public Thing apply78(Thing a1, Thing a2, Thing a3, Thing a4, Thing a5, Thing a6, Thing a7, Thing a8) {
         throw new RuntimeException("This is a compiler bug");
     }
+
+    @Override
+    public String[] repr() {
+        return new String[]{ "Function", "(", this.getClass().getName(), ")" };
+    }
 }
