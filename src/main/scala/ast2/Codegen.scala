@@ -39,6 +39,13 @@ class Stack {
   }
 }
 
+class Frame {
+
+  var localsUsed = 1
+
+}
+
+
 /**
  * Java code generator
  */
@@ -218,7 +225,7 @@ object Codegen {
     mv.visitCode()
     
     val stack = new Stack()
-    
+
     var i = 1
     uf.captures.foreach { capture =>
       mv.visitVarInsn(ALOAD, 0)
@@ -271,13 +278,14 @@ object Codegen {
       uf: CreateFunction, 
       mv: MethodVisitor,
       ex: Initialize,
-      stack: Stack) {
+      stack: Stack,
+      frame: Frame) {
 
     mv.visitVarInsn(ALOAD, ex.index)
     mv.visitTypeInsn(CHECKCAST, ex.name)
         
     ex.params.foreach { x =>
-      add(module, uf, mv, x, stack)
+      add(module, uf, mv, x, stack, frame)
     }
     
     val ncaptures = ex.params.length
@@ -295,7 +303,8 @@ object Codegen {
       uf: CreateFunction, 
       mv: MethodVisitor,
       ex: CodegenStep,
-      stack: Stack) {
+      stack: Stack,
+      frame: Frame) {
     
     val sn = slashedName(module, uf)
     
@@ -381,11 +390,13 @@ object Codegen {
         }
         
       case StoreLocal(local, _, value) =>
-        add(module, uf, mv, value, stack)
+        add(module, uf, mv, value, stack, frame)
         stack.push
         mv.visitVarInsn(ASTORE, local)
         stack.pop
-        
+        //println ("** I am storing " + value)
+        //println (uf.locals.find { cl => cl.index == local }.get)
+
       case CallLocal(local, _, args) =>
         val javafname = "apply" + args.length
         val javasignature = "(" + (JTHING * args.length) + ")" + JTHING
@@ -393,7 +404,7 @@ object Codegen {
         stack.push
         mv.visitTypeInsn(CHECKCAST, FUNC)
         args.foreach { arg => 
-            add(module, uf, mv, arg, stack)
+            add(module, uf, mv, arg, stack, frame)
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, FUNC, javafname, javasignature, false)
         args.foreach { x => stack.pop }
@@ -405,7 +416,7 @@ object Codegen {
         stack.push
         mv.visitFieldInsn(GETFIELD, sn, name, JFUNC)
         args.foreach { arg => 
-            add(module, uf, mv, arg, stack)
+            add(module, uf, mv, arg, stack, frame)
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, FUNC, javafname, javasignature, false)
         args.foreach { x => stack.pop }
@@ -417,7 +428,7 @@ object Codegen {
         stack.push
         mv.visitFieldInsn(GETFIELD, sn, name, JFUNC)
         args.foreach { arg => 
-            add(module, uf, mv, arg, stack)
+            add(module, uf, mv, arg, stack, frame)
         }
         mv.visitMethodInsn(INVOKEVIRTUAL, FUNC, javafname, javasignature, false)
         args.foreach { x => stack.pop }
@@ -453,7 +464,7 @@ object Codegen {
             stack.push
             mv.visitLdcInsn(new Integer(i))
             stack.push
-            add(module, uf, mv, args(i), stack)
+            add(module, uf, mv, args(i), stack, frame)
             //mv.visitVarInsn(ALOAD, i + 1)
             stack.push
             mv.visitInsn(AASTORE)
@@ -465,17 +476,21 @@ object Codegen {
         stack.push
       
       case SIf(cond, extrue, exfalse) =>
-        add(module, uf, mv, cond, stack)
+        add(module, uf, mv, cond, stack, frame)
         mv.visitTypeInsn(CHECKCAST, BOOL)
         mv.visitFieldInsn(GETFIELD, BOOL, "b", "Z")
         val l1 = new Label()
+        val l2 = new Label()
         mv.visitJumpInsn(IFEQ, l1)
-        add(module, uf, mv, extrue, stack)
+        add(module, uf, mv, extrue, stack, frame)
         stack.push
-        mv.visitInsn(ARETURN)
+        mv.visitJumpInsn(GOTO, l2)
+        //mv.visitInsn(ARETURN)
         mv.visitLabel(l1)
-        mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
-        add(module, uf, mv, exfalse, stack)
+        //mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null)
+        add(module, uf, mv, exfalse, stack, frame)
+        mv.visitLabel(l2)
+        //mv.visitFrame(Opcodes.F_FULL, 1, Array("test/main"), 1, Array("runtime/Thing"))
         stack.push
 
       case Instance(cname, argtypes, args) =>
@@ -485,14 +500,14 @@ object Codegen {
         mv.visitInsn(DUP)
         stack.push
         args.foreach { arg =>
-          add(module, uf, mv, arg, stack)
+          add(module, uf, mv, arg, stack, frame)
         }
         mv.visitMethodInsn(INVOKESPECIAL, cname, "<init>", signature, false)
         stack.pop
         stack.pop
 
       case InstanceField(owner, classname, fieldname) =>
-        add(module, uf, mv, owner, stack)
+        add(module, uf, mv, owner, stack, frame)
         mv.visitTypeInsn(CHECKCAST, classname)
         mv.visitFieldInsn(GETFIELD, classname, fieldname, JTHING)
         stack.push
@@ -511,7 +526,7 @@ object Codegen {
           mv.visitInsn(DUP)
           stack.push
           args.foreach { arg =>
-            add(module, uf, mv, arg, stack)
+            add(module, uf, mv, arg, stack, frame)
           }
           val ncaptures = args.length
           val j = JTHING * ncaptures
@@ -537,17 +552,19 @@ object Codegen {
     
     val stack = new Stack()
     (0 to nargs).foreach { x => stack.push }
-    
+
+    val frame = new Frame()
+
     uf.instantiations.foreach { x => 
       instantiate(module, uf, mv, x, stack)
     }
 
     uf.initializations.foreach { x => 
-      initialize(module, uf, mv, x, stack)  
+      initialize(module, uf, mv, x, stack, frame)
     }
     
     uf.code.foreach { ex =>
-      add(module, uf, mv, ex, stack)
+      add(module, uf, mv, ex, stack, frame)
     }
     
     uf.code.last match {
@@ -657,7 +674,7 @@ object Codegen {
    */
   def genclass(module: CreateModule, f: CreateFunction) = {
     val cw = new ClassWriter(0)
-    cw.visit(V1_7, ACC_PUBLIC + ACC_SUPER, slashedName(module, f), null, FUNC, null)
+    cw.visit(V1_6, ACC_PUBLIC + ACC_SUPER, slashedName(module, f), null, FUNC, null)
     
     addConstants(cw, module, f)
     addConstructor(cw, module, f)
@@ -749,7 +766,7 @@ object Codegen {
       mv.visitMethodInsn(INVOKEVIRTUAL, THING, "toString", "()Ljava/lang/String;", false)
       stack.pop
       mv.visitInsn(AASTORE)
-      stack pop 3
+      stack pop 2
     }
 
     mv.visitInsn(DUP)
@@ -759,7 +776,7 @@ object Codegen {
     mv.visitLdcInsn(")")
     stack.push
     mv.visitInsn(AASTORE)
-    stack pop 3
+    stack pop 2
 
     mv.visitInsn(ARETURN)
     mv.visitMaxs(stack.maxdepth + 1, 1)
@@ -771,7 +788,7 @@ object Codegen {
    */
   def genclass(module: CreateModule, c: CreateClass) = {
     val cw = new ClassWriter(0)
-    cw.visit(V1_7, ACC_PUBLIC + ACC_SUPER, slashedName(module, c), null, THING, null)
+    cw.visit(V1_6, ACC_PUBLIC + ACC_SUPER, slashedName(module, c), null, THING, null)
 
     addFields(cw, module, c)
     addConstructor(cw, module, c)
