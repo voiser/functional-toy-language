@@ -89,10 +89,16 @@ class CompilationUnit(
           l = l + 1
           localmap.put(name, l)
           (name, v, l)
-      }
-      val locals1 = locals0.filter(_ != null)
+      }.filter(_ != null)
 
-      val locals = locals1 /* ++ localOvers */
+      val locals1: List[(String, Node, Int)] = new MatchVarsExtractor(root).vars.map {
+        case (name, node) =>
+          l = l + 1
+          localmap.put(name, l)
+          (name, node, l)
+      }
+
+      val locals = locals0 ++ locals1
 
       val myexterns = externs.find { x => x.function.name == root.name }
 

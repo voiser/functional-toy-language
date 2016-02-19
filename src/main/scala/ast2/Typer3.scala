@@ -772,7 +772,7 @@ object Typer3 {
         val s1 = tp(env, source, a, s)
         val sourcety = s1(a) match {
           case x : Tycon  => x
-          case x : Ty => throw new TypeException("Trying to match a non-class value " + x.repr, n, trace)
+          case x : Ty => x // throw new TypeException("Trying to match a non-class value " + x.repr, n, trace)
         }
         val patty = tyForPattern(n, pattern)
 

@@ -3,6 +3,8 @@ package ast2
 import scala.collection.JavaConverters._
 import org.antlr.v4.runtime.ParserRuleContext
 
+import scala.collection.mutable
+
 /**
  * @author david
  */
@@ -50,6 +52,9 @@ class Visitor {
   }
 
   def visitNField(n: NField) {
+  }
+
+  def visitNMatch(n: NMatch) {
   }
 
   def visit(n: NFn): Unit = {
@@ -117,6 +122,12 @@ class Visitor {
     visit(n.owner)
   }
 
+  def visit(n: NMatch): Unit = {
+    visitNMatch(n)
+    visit(n.source)
+    visit(n.exp)
+  }
+
   def visit(n: Node) : Unit = {
     n match {
       
@@ -157,6 +168,9 @@ class Visitor {
         visit(x)
 
       case x : NField =>
+        visit(x)
+
+      case x : NMatch =>
         visit(x)
 
       case _ =>    
@@ -514,5 +528,25 @@ class InterfaceChecker(klass: Klass) extends Visitor {
     }
     val tr1 = TraceElement("The following functions define a " + interty.repr + ":", null)
     throw new TypeException("Class " + klass.name + " is declared to be " + isa.name + " but does not define " + rname, klass.definedat, tr2 ++ List(tr1))
+  }
+}
+
+class MatchVarsExtractor(root: Node) extends Visitor {
+  val vs = mutable.MutableList[(String, Node)]()
+
+  def vars = vs.toList
+
+  def varnames = vars.map(_._1)
+
+  visit(root)
+
+  def vars(p: Pattern) : List[String] = p match {
+    case PVar(_, name) => List(name)
+    case PClass(_, _, params) => params.flatMap { x => vars(x) }
+  }
+
+  override def visitNMatch(n: NMatch): Unit = {
+    vars(n.pattern).foreach { v => vs.+=((v, n)) }
+    super.visitNMatch(n)
   }
 }

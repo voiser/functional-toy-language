@@ -250,7 +250,6 @@ object Main {
         val export = exports.find { _.name == fname } match {
           case None => throw new Exception("Function " + fname + " can't be located in module " + pack)
           case Some(export) => export
-
         }
 
         val genericType = tyfn(export.`type`)
@@ -306,10 +305,12 @@ object Main {
    */
   class stageTransformMatches(env: Env, code: String) extends Function1[NModule, NModule] {
     def apply(module: NModule) = {
-      // show(module.main, code)
-      val ret = new MatchTransformer(module).apply()
-      // show(ret.main, code)
-      ret
+      //show(module.main, code)
+      val ret = new MatchVarsTransformer(module).apply()
+      //show(ret.main, code)
+      val ret2 = new MatchTransformer(ret).apply()
+      //show(ret2.main, code)
+      ret2
     }
   }
 
@@ -321,7 +322,7 @@ object Main {
     def apply(module: NModule) = {
       module.main.fwdty = Tyfn(List(), Tyvar("a", List()))
       Typer3.getType(env, module.main)
-      show(module.main, code)
+      //show(module.main, code)
       module
     }
   }

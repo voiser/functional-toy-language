@@ -241,6 +241,16 @@ case class NewAnon(
   def repr(d: Int) = margin(d) + "NewAnon "  + name + " {\n" + childrepr(d) + "\n" + margin(d) + "}"
   def children = captures
 }
+case class Match(
+    what: CodegenStep,
+    klass: String,
+    params: List[(String, Int)],
+    exptrue: CodeStep)
+    extends CodeStep {
+  def repr(d: Int) = margin(d) + "Match " + klass + " " + params.mkString("(", ",", ")") + " {\n" + childrepr(d) + "\n" + margin(d) +
+    "} then {\n" + exptrue.repr(d + 1) + "\n" + margin(d) + "}"
+  def children = List(what)
+}
 object Intermediate {
   
   def codegenType(ty: Ty) = ty match {
@@ -414,36 +424,12 @@ object Intermediate {
       SIf(c, t, f)
       
     case x @ NRefAnon(name) =>
-
-
-      /*
-      val local = findlocal(name, allLocals) 
-      local match {
-        case Some((name, _, i)) => Local(i)
-        case _ => 
-          externs.find(_.name == x.name) match {
-            case Some(CreateExtern(name, ty, fullname)) => Extern(x.name)
-            case None => captures.find(_.name == x.name) match {
-              case Some(CreateCapture(name, ty)) => Capture(name)
-              case None =>
-              */
-
-                unit.unitFunctions.find(f => f.name == name) match {
-                  case None => throw new RuntimeException("Can't locate anonymous function " + name + ". This is a compiler bug")
-                  case Some(cuf) =>
-                    val args = cuf.captures.map { cap => translate(unit, function, allLocals, externs, captures, cap) }
-                    NewAnon(unit.module.name + "/" + name, args)
-                }
-
-
-                // Lookup anon function definition
-                // Lookup anon function captures
-                // Create new step "InstantiateAndInit" or so
-                ///Constant(x.name)
-                ///???
-            //}
-         // }
-      //}
+      unit.unitFunctions.find(f => f.name == name) match {
+        case None => throw new RuntimeException("Can't locate anonymous function " + name + ". This is a compiler bug")
+        case Some(cuf) =>
+          val args = cuf.captures.map { cap => translate(unit, function, allLocals, externs, captures, cap) }
+          NewAnon(unit.module.name + "/" + name, args)
+      }
 
     case x @ NInstantiation(cname, args) =>
       x.env.getClass(cname) match {
@@ -456,6 +442,24 @@ object Intermediate {
     case x @ NField(owner, fname) =>
       val o = translate(unit, function, allLocals, externs, captures, owner)
       InstanceField(o, x.klass.fullname, fname)
+
+    case x @ NMatch(source, pattern, exptrue) =>
+      val s = translate(unit, function, allLocals, externs, captures, source)
+      val e = translate(unit, function, allLocals, externs, captures, exptrue)
+      pattern match {
+        case x : PVar => throw new RuntimeException("This match is not valid")
+        case PClass(_, name, params) =>
+          val klass = unit.classes.find { k => k.localname == name }.get
+          val pars = params.map { p =>
+            p match {
+              case PVar(_, pn) => flocal(pn, allLocals)
+              case _ => throw new RuntimeException("This is a compiler bug")
+            }
+          }
+
+          val fields2pars = klass.fields.map(_.name) zip pars
+          Match(s, klass.fullname, fields2pars.toList, e)
+      }
 
     case _ => Nop()
   }

@@ -1,16 +1,32 @@
 package test;
 
-import runtime.DynamicDispatch;
-import runtime.Func;
-import runtime.Int;
-import runtime.Thing;
+import runtime.*;
 
 public class Kk extends Func {
 
 	public Thing a;
 	public Thing b;
 
-	public Kk() {
+    public class Blah extends Thing {
+        public Thing a;
+        public Thing b;
+    }
+
+	public Thing lala(Thing x) {
+
+        Thing a;
+        Thing b;
+        Thing ret;
+
+		if (x instanceof Blah) {
+            a = ((Blah)x).a;
+            b = ((Blah)x).b;
+            ret = a;
+		} else {
+            ret = new Bool(false);
+        }
+
+        return ret;
 	}
 
 	@Override
