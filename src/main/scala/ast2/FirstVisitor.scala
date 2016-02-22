@@ -73,12 +73,12 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   
   override def visitValue(ctx: GrammarParser.ValueContext) = {
     if (ctx.INTEGER != null) {
-      val raw = ctx.INTEGER.getText
+      val raw = (if (ctx.m != null) "-" else "") + ctx.INTEGER.getText
       val i = java.lang.Integer.parseInt(raw)
       fill(NInt(i), ctx)
     } 
     else if (ctx.FLOAT != null) {
-      val raw = ctx.FLOAT.getText
+      val raw = (if (ctx.m != null) "-" else "") + ctx.FLOAT.getText
       val f = java.lang.Float.parseFloat(raw)
       fill(NFloat(f), ctx)
     }

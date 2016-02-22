@@ -35,8 +35,8 @@ expression
     ;
 
 value
-    : INTEGER
-    | FLOAT
+    : m='-'? INTEGER
+    | m='-'? FLOAT
     | STRING
     | boolfalse='false'
     | booltrue='true'
