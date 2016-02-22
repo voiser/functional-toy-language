@@ -767,7 +767,7 @@ object Typer3 {
       /*
        *
        */
-      case NMatch(source, pattern, block) =>
+      case NMatch(source, pattern, exptrue, expfalse) =>
         val a = gen.get()
         val s1 = tp(env, source, a, s)
         val sourcety = s1(a) match {
@@ -780,7 +780,7 @@ object Typer3 {
 
           case _:PVar => ???
 
-          case PClass(_, name, params) =>
+          case PClass(_, name, params, vname) =>
             val klass = env.getClass(name) match {
               case Some(k) => k
               case None => throw new TypeException("Unknown class " + name, n, trace)
@@ -798,12 +798,17 @@ object Typer3 {
             val s2 = unify(patty, ctor2, selma, n)
             val marge = s2(patty).asInstanceOf[Tycon]
             val env1 = Env(env, n)
+            if (vname != null) env1.put(vname, marge)
             (tyvars(patty) zip marge.types).foreach {
               case (ta,tb) => env1.put(ta.name, tb)
             }
-            val b = gen.get()
-            val s3 = tp(env1, block, b, s)
-            unify(t, b, s3, n)
+
+            val b, c = gen.get()
+            val trues = tp(env1, exptrue, b, s)
+            val falss = tp(env1, expfalse, c, trues)
+            val s3 = unify(b, c, falss, n)
+            val s4 = unify(t, s3(b), s3, n)
+            s4
         }
     }
     n.ty = tysub(t)
@@ -817,7 +822,7 @@ object Typer3 {
 
   def tyForPattern(n: Node, pattern: Pattern) : Ty = pattern match {
     case PVar(_, name) => Tyvar(name, List())
-    case PClass(_, name, params) =>  Tycon(name, params map (tyForPattern(n, _)))
+    case PClass(_, name, params, vname) =>  Tycon(name, params map (tyForPattern(n, _)))
   }
 
   /**

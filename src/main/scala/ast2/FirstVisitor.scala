@@ -202,19 +202,14 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   override def visitMatch(ctx: MatchContext) = {
     val source = visitExpression(ctx.source)
     val pattern = visitPatt(ctx.matchexp())
-    val exp = visitExpression(ctx.exp)
-    fill(NMatch(source, pattern, exp), ctx)
-    /*
-    val block =
-      if (ctx.block() != null) visitBlock(ctx.block())
-      else fill(NBlock(List(visitExpression(ctx.exp))), ctx)
-    fill(NMatch(source, pattern, block), ctx)
-    */
+    val exptrue = visitExpression(ctx.exptrue)
+    val expfalse = visitExpression(ctx.expfalse)
+    fill(NMatch(source, pattern, exptrue, expfalse), ctx)
   }
 
   def visitPatt(ctx: MatchexpContext) : Pattern = {
-    if (ctx.ID() != null) PVar(ctx, ctx.ID().getText)
-    else PClass(ctx, ctx.CLASSID().getText, ctx.matchexp().asScala.toList map visitPatt)
+    if (ctx.CLASSID() != null) PClass(ctx, ctx.CLASSID().getText, ctx.matchexp().asScala.toList map visitPatt, if (ctx.v == null) null else ctx.v.getText)
+    else PVar(ctx, ctx.ID().getText)
   }
 }
 

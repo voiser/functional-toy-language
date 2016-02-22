@@ -125,7 +125,8 @@ class Visitor {
   def visit(n: NMatch): Unit = {
     visitNMatch(n)
     visit(n.source)
-    visit(n.exp)
+    visit(n.exptrue)
+    visit(n.expfalse)
   }
 
   def visit(n: Node) : Unit = {
@@ -542,7 +543,7 @@ class MatchVarsExtractor(root: Node) extends Visitor {
 
   def vars(p: Pattern) : List[String] = p match {
     case PVar(_, name) => List(name)
-    case PClass(_, _, params) => params.flatMap { x => vars(x) }
+    case PClass(_, _, params, vname) => vname :: params.flatMap { x => vars(x) }
   }
 
   override def visitNMatch(n: NMatch): Unit = {

@@ -511,10 +511,11 @@ object Main {
           rep("new " + name)
           params.foreach { x => show0(x, d+1) }
 
-        case x @ NMatch(source, pattern, block) =>
+        case x @ NMatch(source, pattern, exptrue, expfalse) =>
           rep("match " + pattern)
           show0(source, d+1)
-          show0(block, d+1)
+          show0(exptrue, d+1)
+          show0(expfalse, d+1)
 
         case _ =>
           rep(n.toString())

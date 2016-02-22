@@ -369,16 +369,19 @@ object Codegen {
           mv.visitMethodInsn(INVOKEVIRTUAL, cname, "initialize", "(" + j + ")V", false)
         }
 
-      case Match(what, cname, pars, exptrue) =>
+      case Match(vlocal, what, cname, pars, exptrue, expfalse) =>
         add(module, uf, mv, what)
         mv.visitInsn(DUP)
         mv.visitTypeInsn(INSTANCEOF, cname)
         val l1 = new Label()
         val l2 = new Label()
         mv.visitJumpInsn(IFEQ, l1)
+        mv.visitTypeInsn(CHECKCAST, cname)
+        mv.visitVarInsn(ASTORE, vlocal)
         pars.foreach {
           case (field, local) =>
-            mv.visitTypeInsn(CHECKCAST, cname)
+            //mv.visitTypeInsn(CHECKCAST, cname)
+            mv.visitVarInsn(ALOAD, vlocal)
             mv.visitFieldInsn(GETFIELD, cname, field, JTHING)
             mv.visitVarInsn(ASTORE, local)
         }
@@ -386,7 +389,7 @@ object Codegen {
         mv.visitJumpInsn(GOTO, l2)
         mv.visitLabel(l1)
         mv.visitInsn(POP)
-        add(module, uf, mv, SBool(false))
+        add(module, uf, mv, expfalse)
         mv.visitLabel(l2)
     }
   }

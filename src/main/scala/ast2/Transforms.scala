@@ -89,7 +89,7 @@ class Transformer {
   }
 
   def visitNMatch(n: NMatch): Node = {
-    NMatch(visit(n.source), n.pattern, visit(n.exp))
+    NMatch(visit(n.source), n.pattern, visit(n.exptrue), visit(n.expfalse))
   }
 
   def visit(n: Node) : Node = {
@@ -264,7 +264,9 @@ class ObjCallTransformer(module: NModule) extends Transformer {
 }
 
 
-
+/*
+ *
+ */
 class ClassConstantRenamer(module: NModule) extends Transformer {
 
   class Renamer(k: NClass, prefix:String) extends Transformer {
@@ -314,6 +316,19 @@ class ClassConstantRenamer(module: NModule) extends Transformer {
 }
 
 
+/*
+ * Simplifies match expressions:
+ *
+ * if x is A(a, b, C(d, e)) then true else false
+ *
+ * is converted to:
+ *
+ * if x is A(a, b, $c) then
+ *   if $c is C(d, e) then true
+ *   else false
+ * else false
+ *
+ */
 class MatchTransformer(module: NModule) extends Transformer {
 
   var nvar = 0
@@ -324,7 +339,7 @@ class MatchTransformer(module: NModule) extends Transformer {
 
   def convertMatch(n: NMatch) : NMatch = {
     n.pattern match {
-      case PClass(ctx, name, params) =>
+      case PClass(ctx, name, params, vname) =>
         params.collectFirst { case x : PClass => x } match {
           case None => n
           case Some(p) =>
@@ -337,7 +352,9 @@ class MatchTransformer(module: NModule) extends Transformer {
             val nref = NRef(newvar)
             nref.filename = n.filename
             nref.ctx = n.ctx
-            val nmatch = fill(n, NMatch(n.source, PClass(p.ctx, name, z), fill(n.exp, convertMatch(fill(n, NMatch(nref, p, n.exp))))))
+            val npatt = PClass(p.ctx, name, z, vname)
+            val nexptrue = fill(n.exptrue, convertMatch(fill(n, NMatch(nref, p, n.exptrue, n.expfalse))))
+            val nmatch = fill(n, NMatch(n.source, npatt, nexptrue, n.expfalse))
             convertMatch(nmatch)
         }
     }
@@ -377,11 +394,11 @@ class MatchVarsTransformer(module: NModule) extends Transformer {
     val subs = new MatchVarsExtractor(n).varnames.map { v => (v, prefix + "_" + v) }.toMap
     def substitute(p: Pattern, subs: Map[String, String]) : Pattern = p match {
       case PVar(ctx, name) if subs.contains(name) => PVar(ctx, subs(name))
-      case PClass(ctx, name, params) => PClass(ctx, name, params.map{p => substitute(p, subs)})
+      case PClass(ctx, name, params, vname) => PClass(ctx, name, params.map{p => substitute(p, subs)}, subs(vname))
     }
     val newpattern = substitute(n.pattern, subs)
-    val newexp = new VarSubstitutor(n.exp, subs).apply()
-    fill(n, NMatch(n.source, newpattern, newexp))
+    val newexp = new VarSubstitutor(n.exptrue, subs).apply()
+    fill(n, NMatch(n.source, newpattern, newexp, n.expfalse))
   }
 }
 

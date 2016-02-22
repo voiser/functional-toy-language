@@ -45,7 +45,6 @@ class CodegenTests extends FunSuite {
     }
   }
 
-  /*
   test("Intermediate") { // manual test
     val runtime = new Runtime()
     val code1 = """
@@ -54,18 +53,12 @@ class CodegenTests extends FunSuite {
       class Some(x)
       class Thing(x Int)
 
-      f(x) = {
-        z = 9
-        if x is Some(z) then z
-      }
+      f(x) = if x is Some(j Thing(z)) then j else Thing(0)
 
-      g(x) = if x is Some(z) then z
-
-      f(Some(g(Some(1))))
+      f(Some(Thing(1)))
 
       """
     val res1 = intermediate("test", code1, runtime)
     println("matches = " + res1)
   }
-  */
 }

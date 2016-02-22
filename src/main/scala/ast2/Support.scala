@@ -36,7 +36,7 @@ abstract class Pattern(ctx: MatchexpContext)
 case class PVar(ctx: MatchexpContext, name: String) extends Pattern(ctx) {
   override def toString: String = name
 }
-case class PClass(ctx: MatchexpContext, name: String, params: List[Pattern]) extends Pattern(ctx) {
+case class PClass(ctx: MatchexpContext, name: String, params: List[Pattern], vname: String) extends Pattern(ctx) {
   override def toString: String = name + (params map (_.toString)).mkString("(", ",", ")")
 }
 
@@ -97,7 +97,7 @@ case class NInstantiation(className: String, params: List[Node]) extends Node
 case class NField(owner: Node, field: String) extends Node {
   var klass : Klass = null
 }
-case class NMatch(source: Node, pattern: Pattern, exp: Node) extends Node
+case class NMatch(source: Node, pattern: Pattern, exptrue: Node, expfalse: Node) extends Node
 
 
 /**

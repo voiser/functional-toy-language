@@ -101,11 +101,11 @@ instantiation
     ;
 
 match
-    : 'if' source=expression 'is' matchexp 'then' exp=expression
+    : 'if' source=expression 'is' matchexp 'then' exptrue=expression 'else' expfalse=expression
     ;
 
 matchexp
-    : CLASSID '(' (matchexp (',' matchexp)*)? ')'
+    : v=ID? CLASSID '(' (matchexp (',' matchexp)*)? ')'
     | ID
     ;
 

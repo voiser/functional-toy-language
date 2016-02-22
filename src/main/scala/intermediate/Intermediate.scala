@@ -242,13 +242,16 @@ case class NewAnon(
   def children = captures
 }
 case class Match(
+    local: Int,
     what: CodegenStep,
     klass: String,
     params: List[(String, Int)],
-    exptrue: CodeStep)
+    exptrue: CodeStep,
+    expfalse: CodeStep)
     extends CodeStep {
-  def repr(d: Int) = margin(d) + "Match " + klass + " " + params.mkString("(", ",", ")") + " {\n" + childrepr(d) + "\n" + margin(d) +
-    "} then {\n" + exptrue.repr(d + 1) + "\n" + margin(d) + "}"
+  def repr(d: Int) = margin(d) + "Match " + local + " " + klass + " " + params.mkString("(", ",", ")") + " {\n" + childrepr(d) + "\n" + margin(d) +
+    "} then {\n" + exptrue.repr(d + 1) + "\n" + margin(d) +
+    "} else {\n" + expfalse.repr(d + 1) + "\n" + margin(d) + "}"
   def children = List(what)
 }
 object Intermediate {
@@ -443,12 +446,13 @@ object Intermediate {
       val o = translate(unit, function, allLocals, externs, captures, owner)
       InstanceField(o, x.klass.fullname, fname)
 
-    case x @ NMatch(source, pattern, exptrue) =>
+    case x @ NMatch(source, pattern, exptrue, expfalse) =>
       val s = translate(unit, function, allLocals, externs, captures, source)
-      val e = translate(unit, function, allLocals, externs, captures, exptrue)
+      val t = translate(unit, function, allLocals, externs, captures, exptrue)
+      val f = translate(unit, function, allLocals, externs, captures, expfalse)
       pattern match {
         case x : PVar => throw new RuntimeException("This match is not valid")
-        case PClass(_, name, params) =>
+        case PClass(_, name, params, vname) =>
           val klass = unit.classes.find { k => k.localname == name }.get
           val pars = params.map { p =>
             p match {
@@ -458,7 +462,7 @@ object Intermediate {
           }
 
           val fields2pars = klass.fields.map(_.name) zip pars
-          Match(s, klass.fullname, fields2pars.toList, e)
+          Match(flocal(vname, allLocals), s, klass.fullname, fields2pars.toList, t, f)
       }
 
     case _ => Nop()
