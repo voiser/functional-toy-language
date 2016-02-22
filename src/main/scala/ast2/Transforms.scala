@@ -371,7 +371,6 @@ class VarSubstitutor(n: Node, subs: Map[String, String]) extends Transformer {
   def apply() = visit(n)
 
   override def visitNRef(n: NRef): Node = {
-    println("Visiting ref " + n)
     if (subs.contains(n.name)) fill(n, NRef(subs(n.name)))
     else super.visitNRef(n)
   }

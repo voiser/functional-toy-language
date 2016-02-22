@@ -138,5 +138,31 @@ class ClassesTests extends FunSuite {
     val ret = run(code)
     assert("[3, 4]" == ret.toString())
   }
+
+  test("Matching 1") {
+    val code = """
+      class Some(x)
+      class Thing(y)
+
+      f(x) = if x is Some(Thing(z)) then z else 0
+
+      [ f(Some(Thing(9))), f(Some(Some(1))) ]
+    """
+    val ret = run(code)
+    assert("[9, 0]" == ret.toString())
+  }
+
+  test("Matching 2") {
+    val code = """
+      class Some(x)
+      class Thing(y)
+
+      f(x) = if x is Some(j Thing(z)) then j else Thing(0)
+
+      [ f(Some(Thing(9))), f(Some(Some(1))) ]
+      """
+    val ret = run(code)
+    assert("[Thing(9), Thing(0)]" == ret.toString())
+  }
 }
 
