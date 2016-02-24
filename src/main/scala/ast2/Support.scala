@@ -98,7 +98,7 @@ case class NField(owner: Node, field: String) extends Node {
   var klass : Klass = null
 }
 case class NMatch(source: Node, pattern: Pattern, exptrue: Node, expfalse: Node) extends Node
-
+case class NInterface(name: String, typarams: List[GTy], defs: List[NForward]) extends Node
 
 /**
  * A type class and its members

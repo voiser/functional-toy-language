@@ -98,9 +98,11 @@ object Main {
       env.get(m) match {
         case Some(ts @ TypeScheme(_, tyfn @ Tyfn(input, output))) =>
           val inputvars = input.collect {
-            case tv @ Tyvar(tn, tr) => tr collect {
-              case Isa(Tycon(cname, _)) => tv
-            }
+            case tv @ Tyvar(tn, tr) => 
+              if (tn == "this") List(tv)
+              else tr collect {
+                case Isa(Tycon(cname, _)) => tv
+              }
           }.flatten.distinct
           if (inputvars.size != 1) throw new RuntimeException("What should I do in this case?")
           val theInputType = inputvars(0)
@@ -321,7 +323,7 @@ object Main {
   class stageType(env: Env, code: String) extends Function1[NModule, NModule] {
     def apply(module: NModule) = {
       module.main.fwdty = Tyfn(List(), Tyvar("a", List()))
-      Typer3.getType(env, module.main)
+      Typer3.getType(env, module)
       //show(module.main, code)
       module
     }

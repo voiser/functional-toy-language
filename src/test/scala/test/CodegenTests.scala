@@ -51,12 +51,15 @@ class CodegenTests extends FunSuite {
     val code1 = """
       module test
 
-      class Some(x)
-      class Thing(x Int)
+      interface MySet[x] {
+        mysize : this -> Int
+      }
 
-      f(x) = if x is Some(Thing(z)) then z else 0
+      class MyList(x Int) is MySet[x] {
+        mysize(this) = this.x
+      }
 
-      f(Some(Thing(1)))
+      a = MyList(9)
 
       """
     val res1 = intermediate("test", code1, runtime)

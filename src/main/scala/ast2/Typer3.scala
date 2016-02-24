@@ -302,8 +302,8 @@ object Typer3 {
    * step 4                        this is an int
    * step 5                        unify (t2, int)    substitution = (t2 -> int)
    * step 6     ^^^^^^^^^^^^^^^^^^ unify (t1, t2)     substitution = (t1 -> int, t2 -> int)    env("a") = substitution(t1) = int
-   */
-  def tp(env: Env, n: Node, t: Ty, s: Subs) (implicit gen: TyvarGenerator, trace: List[TraceElement]) : Subs = {
+    **/
+  def tp(env: Env, n: Node, t: Ty, s: Subs) (implicit gen: TyvarGenerator, trace: List[TraceElement], module: NModule) : Subs = {
     n.env = env
 
     // Utility function to add a trace
@@ -392,7 +392,7 @@ object Typer3 {
                 if (matchingInterface.isEmpty) exception("Overriding method " + name + " of interface " + interface.name + " in a class that does not implement it", n)
 
                 val t2 = emptySubst.extend(Tyvar.wildard, ktycon)(wildcarded).asInstanceOf[Tyfn]
-                try {
+                val u = try {
                   unify(t2, defining, s1, n)
                 }
                 catch {
@@ -402,6 +402,12 @@ object Typer3 {
                     val te3 = TraceElement("Expected type: " + t2.repr, null)
                     val te4 = TraceElement("Given type: " + defining.repr, null)
                     exception("Incompatible types", n)(te1 :: te2 :: te3 :: te4 :: e.trace)
+                }
+                val before = tyvars(ktycon)
+                val after = tyvars(u(ktycon))
+                if (before.size != after.size) {
+                  val te1 = TraceElement("It would force " + ktycon.types.zip(u(ktycon).asInstanceOf[Tycon].types).map{p => "" + p._1.repr + " -> " + p._2.repr}.mkString(","), null)
+                  exception("Defining " + name + " as " + defining.repr + " forces " + cname + " to reduce generality", n)(te1 :: trace)
                 }
 
                 ex.asInstanceOf[NFn].isOverride = (theKlass, name, t2)
@@ -507,7 +513,8 @@ object Typer3 {
             val in = params.map { p =>
               p.klass match {
                 case KlassConst(gty) => checkedType(gty, env, p)
-                case KlassVar(_) => gen.get()
+                case KlassVar(n) if n == "this" => checkedType(Tyvar("this", List()), env, p)
+                case KlassVar(n) => gen.get(n)
               }
             }
             val out = gen.get()
@@ -810,6 +817,25 @@ object Typer3 {
             val s4 = unify(t, s3(b), s3, n)
             s4
         }
+
+      case NInterface(name, params, forwards) =>
+        val fullname = module.name + "/" + name
+        val ty = Tycon(name, params.map(Typegrammar.toType))
+        env.get(name) match {
+          case None =>
+            Main.registerTy(fullname, ty.repr)(env)
+            forwards.foreach { fwd =>
+              val fty = Typegrammar.toType(fwd.tydef)
+              Main.registerFn(fwd.name, fty.repr)(env)
+            }
+            Main.registerInterface(name, forwards.map{_.name})(env)
+
+            val x = Tycon("Class", List(ty))
+            unify(t, x, s, n)
+
+          case _ =>
+            exception("Redefining " + name, n)
+          }
     }
     n.ty = tysub(t)
     tysub
@@ -828,10 +854,10 @@ object Typer3 {
   /**
    * It all starts here.
    */
-  def getType(env: Env, n: Node) = {
+  def getType(env: Env, module: NModule) = {
     val gen = new TyvarGenerator("t")
     val rootVar = gen.get()
-    val subs = tp(env, n, rootVar, emptySubst)(gen, List())
-    n.ty
+    val subs = tp(env, module.main, rootVar, emptySubst)(gen, List(), module)
+    module.main.ty
   }
 }

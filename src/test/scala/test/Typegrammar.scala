@@ -19,7 +19,7 @@ class Typegrammar extends FunSuite {
     val cst = parser.file()
     val module = new FirstVisitor(filename).visitFile(cst)
     module.main.name = "main"
-    Typer3.getType(Main.rootEnv, module.main)
+    Typer3.getType(Main.rootEnv, module)
     Main.show(module.main, code2)
   }
   

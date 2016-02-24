@@ -4,7 +4,7 @@ import scala.collection.JavaConverters._
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CommonTokenStream
-import ast2.GrammarParser.{MatchexpContext, MatchContext, ExpressionContext, ForwardContext}
+import ast2.GrammarParser._
 
 /**
  * @author david
@@ -111,7 +111,7 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     val ident = ctx.ID.getText
     val r =
       if (ctx.tydef() != null) NFnArg(ident, KlassConst(getTy(ctx.tydef())))
-      else NFnArg(ident, KlassVar("T"))
+      else NFnArg(ident, KlassVar(ident))
     fill(r, ctx)
   }
   
@@ -210,6 +210,13 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   def visitPatt(ctx: MatchexpContext) : Pattern = {
     if (ctx.CLASSID() != null) PClass(ctx, ctx.CLASSID().getText, ctx.matchexp().asScala.toList map visitPatt, if (ctx.v == null) null else ctx.v.getText)
     else PVar(ctx, ctx.ID().getText)
+  }
+
+  override def visitInterf(ctx: InterfContext) = {
+    def name = ctx.CLASSID().getText
+    def tys = ctx.tydef().asScala.toList.map(getTy)
+    def forwards = ctx.forward().asScala.toList.map(visitForward)
+    fill(NInterface(name, tys, forwards), ctx)
   }
 }
 

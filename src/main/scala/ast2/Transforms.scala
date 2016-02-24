@@ -388,7 +388,7 @@ class MatchVarsTransformer(module: NModule) extends Transformer {
   }
 
   override def visitNMatch(n: NMatch): Node = {
-    val prefix = "$m$" + nmatches;
+    val prefix = "$m$" + nmatches
     nmatches = nmatches + 1
     val subs = new MatchVarsExtractor(n).varnames.map { v => (v, prefix + "_" + v) }.toMap
     def substitute(p: Pattern, subs: Map[String, String]) : Pattern = p match {

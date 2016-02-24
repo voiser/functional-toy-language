@@ -29,6 +29,7 @@ expression
     | left=expression binop=('+' | '-') right=expression
     | klass
     | instantiation
+    | interf
     | defsimple=ID '=' defsimple2=expression
     | defn=ID '(' ')'                            '=' body=expression 
     | defn=ID '(' fnargpair (',' fnargpair)* ')' '=' body=expression 
@@ -98,6 +99,10 @@ klassparent
 
 instantiation
     : CLASSID '(' (expression (',' expression)*)? ')'
+    ;
+
+interf
+    : 'interface' CLASSID ('[' tydef (',' tydef)* ']')? '{' forward* '}'
     ;
 
 match

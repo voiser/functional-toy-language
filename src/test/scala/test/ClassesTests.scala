@@ -164,5 +164,44 @@ class ClassesTests extends FunSuite {
     val ret = run(code)
     assert("[Thing(9), Thing(-1)]" == ret.toString())
   }
-}
 
+  test("Interfaces 1") {
+    val code = """
+
+    interface MySet[x] {
+      mysize : this -> Int
+    }
+
+    class MyList(x) is MySet[x] {
+      mysize (this) = 1
+    }
+
+    a = MyList(3)
+
+    mysize(a)
+    """
+    val ret = run(code)
+    assert("1" == ret.toString())
+  }
+
+  test("Interfaces 2") {
+    val code = """
+
+    interface MySet[x] {
+      mysize : this -> Int
+    }
+
+    class MyList(x) is MySet[x] {
+      mysize (this) = this.x
+    }
+    """
+    try {
+      run(code)
+      fail()
+    }
+    catch {
+      case e : TypeException =>
+        assert(e.getMessage.contains("forces MyList to reduce generality"))
+    }
+  }
+}
