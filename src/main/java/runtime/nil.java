@@ -1,8 +1,8 @@
 package runtime;
 
-public class Nil extends List {
+public class nil extends List {
 
-	public Nil() {
+	public nil() {
 		super(null, null);
 	}
 	

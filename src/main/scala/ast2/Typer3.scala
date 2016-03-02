@@ -133,7 +133,7 @@ object Typer3 {
   def checkRestriction(r: Restriction, t: Ty, s: Subs, n: Node) (implicit gen: TyvarGenerator, trace: List[TraceElement]) : Subs = {
     (t, r) match {
       case (x : Tycon, ty @ Isa(Tycon(name, params))) =>
-        //println("I am checking that " + x.repr + " is a " + ty.repr)
+        // println("I am checking that " + x.repr + " is a " + ty.repr + "  " + n.env.getIsa(x.name))
         n.env.getIsa(x.name) match {
           case None => exception("Can't check restriction", n)
           case Some((orig, isa)) =>
@@ -282,8 +282,8 @@ object Typer3 {
    *
    */
   def basicType(name: String, env: Env, n: Node) (implicit gen: TyvarGenerator, trace: List[TraceElement]) =
-    env.get(name) match {
-      case Some(ts) => ts.newInstance(gen)
+    env.getType(name) match {
+      case Some(Type(fullname, ty)) => TypeScheme(ty).newInstance(gen)
       case None => exception("Failed to locate a basic type. This is a compiler bug.", n)
     }
 
@@ -321,11 +321,17 @@ object Typer3 {
        *
        * env("f$$forward") = Int -> Int
        */
-      case a @ NForward(name, gty) =>
+      case a @ NForward(name, gty, natid) =>
         val ty = Typegrammar.toType(gty)
-        env.put(name + "$$forward", ty)
-        env.putForward(name + "$$forward", a)
-        //unify(t, ty, s, n)(gen, trac("When typing forward definition"))
+        natid match {
+          case Some(natid) =>
+            val fullname = module.name + "/" + name
+            Main.registerFn(fullname, name, ty.repr)(env)
+
+          case None =>
+          env.put(name + "$$forward", ty)
+          env.putForward(name + "$$forward", a)
+        }
         s
 
       /*
@@ -675,10 +681,10 @@ object Typer3 {
         val vars = (typedParams map tyvars).flatten.distinct
         val y = Tycon(name, vars)
         val x = Tycon("Class", List(y))
-        Main.registerTy(null, y, List())(env)
+        val isas2 = isas map (Typegrammar.toType(_).asInstanceOf[Tycon])
+        Main.registerTy(null, y, isas2.map{_.repr})(env)
         val constructor = TypeScheme(vars, Tyfn(typedParams, y))
         env.put(name, constructor)
-        val isas2 = isas map (Typegrammar.toType(_).asInstanceOf[Tycon])
         val k = new Klass(name, constructor, isas2)
         members.foreach { member =>
           k.addField(member._1, member._2)
@@ -686,7 +692,6 @@ object Typer3 {
         k.definedat = z
         env.putClass(k)
         val s1 = unify(t, x, s, n)
-        Main.isa(y, isas2 map {_.repr})(env)
         val env1 = Env(env, z)
         members.foreach { member =>
           env1.put(member._1, member._2)
@@ -818,12 +823,12 @@ object Typer3 {
             s4
         }
 
-      case NInterface(name, params, forwards) =>
+      case NInterface(name, params, supers, forwards) =>
         val fullname = module.name + "/" + name
         val ty = Tycon(name, params.map(Typegrammar.toType))
         env.get(name) match {
           case None =>
-            Main.registerTy(fullname, ty.repr)(env)
+            Main.registerTy(fullname, ty.repr, supers.map(Typegrammar.toType(_).repr))(env)
             forwards.foreach { fwd =>
               val fty = Typegrammar.toType(fwd.tydef)
               Main.registerFn(fwd.name, fty.repr)(env)
@@ -854,10 +859,11 @@ object Typer3 {
   /**
    * It all starts here.
    */
-  def getType(env: Env, module: NModule) = {
+
+  def getType(env: Env, node: Node, module: NModule) : Ty = {
     val gen = new TyvarGenerator("t")
     val rootVar = gen.get()
-    val subs = tp(env, module.main, rootVar, emptySubst)(gen, List(), module)
-    module.main.ty
+    val subs = tp(env, node, rootVar, emptySubst)(gen, List(), module)
+    node.ty
   }
 }

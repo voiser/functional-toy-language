@@ -45,25 +45,15 @@ class CodegenTests extends FunSuite {
     }
   }
 
-  /*
-  test("Intermediate") { // manual test
+  test("Class as Eq") {
     val runtime = new Runtime()
-    val code1 = """
+    val code = """
       module test
 
-      interface MySet[x] {
-        mysize : this -> Int
-      }
-
-      class MyList(x Int) is MySet[x] {
-        mysize(this) = this.x
-      }
-
-      a = MyList(9)
+      1 == 2
 
       """
-    val res1 = intermediate("test", code1, runtime)
-    println("matches = " + res1)
+    val ret = intermediate("test", code, runtime)
+    println(ret)
   }
-  */
 }

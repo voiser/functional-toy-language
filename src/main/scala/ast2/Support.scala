@@ -91,14 +91,14 @@ case class NApply(name: String, params: List[Node]) extends Node {
 }
 case class NObjApply(callee: Node, apply: NApply) extends Node
 case class NIf(cond: Node, exptrue: Node, expfalse: Node) extends Node
-case class NForward(name: String, tydef: GTy) extends Node
+case class NForward(name: String, tydef: GTy, nativename: Option[String]) extends Node
 case class NClass(name: String, params: List[(String, GTy)], is: List[GTy], block: NBlock) extends Node
 case class NInstantiation(className: String, params: List[Node]) extends Node
 case class NField(owner: Node, field: String) extends Node {
   var klass : Klass = null
 }
 case class NMatch(source: Node, pattern: Pattern, exptrue: Node, expfalse: Node) extends Node
-case class NInterface(name: String, typarams: List[GTy], defs: List[NForward]) extends Node
+case class NInterface(name: String, typarams: List[GTy], is: List[GTy], defs: List[NForward]) extends Node
 
 /**
  * A type class and its members

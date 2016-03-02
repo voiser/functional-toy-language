@@ -1,0 +1,9 @@
+module runtime
+
+interface Eq {
+  eq : a+Eq, a -> Bool
+}
+
+interface Set[a] {
+  size : this -> Int
+}

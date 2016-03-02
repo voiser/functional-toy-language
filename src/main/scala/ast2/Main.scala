@@ -60,6 +60,7 @@ object Main {
         case _ => throw new Exception("Can't find type " + p + " in the environment.")
       }
     }
+
     env.putIsa(ty, res)
     ty
   }
@@ -119,50 +120,24 @@ object Main {
    * Creates the root environment which contains the most basic types and functions
    */
   def rootEnv = {
-    implicit val env = Env()
+   
+    // Parse the file "rootenv" which contains the base definitions
+    val is = this.getClass.getResourceAsStream("/rootenv")
+    val code = scala.io.Source.fromInputStream(is).mkString
+    val rootModule = parseFile("runtime", code)
+    Typer3.getType(null, rootModule.main, rootModule)
+    implicit val env = rootModule.main.env
 
-    registerTy("runtime/Class",     "Class[a]")
-    registerTy("runtime/Unit",      "Unit")
-    registerTy("runtime/Eq",        "Eq")
-    registerTy("runtime/Set",       "Set[a]")
-    registerTy("runtime/Pair",      "Pair[l, r]")
-    
-    registerTy("runtime/Num",       "Num",        List("Eq"))
-    registerTy("runtime/Str",       "Str",        List("Eq"))
-    registerTy("runtime/Bool",      "Bool",       List("Eq"))
-    registerTy("runtime/Int",       "Int",        List("Num"))
-    registerTy("runtime/Float",     "Float",      List("Num"))
-    registerTy("runtime/List",      "List[x]",    List("Set[x]"))
-    registerTy("runtime/Dict",      "Dict[k, v]", List("Set[Pair[k, v]]"))
-
-    registerFn("runtime/id",        "id",         "a -> a")
-    registerFn("runtime/do_",       "do",         "(a -> b), a -> b")
-    registerFn("runtime/add",       "add",        "a+Num, a -> a")
-    registerFn("runtime/sub",       "sub",        "a+Num, a -> a")
-    registerFn("runtime/times",     "times",      "a+Num, a -> a")
-    registerFn("runtime/div",       "div",        "a+Num, a -> a")
-
-    registerFn("runtime/oneof",     "oneof",      "a+Set[s] -> s")
     registerFn("runtime/List$size", "List$size",  "List[x] -> Int")
-    registerFn("runtime/list_of",   "list",       "a -> List[a]")
-    registerFn("runtime/cons",      "cons",       "a, List[a] -> List[a]")
-    registerFn("runtime/Nil",       "nil",        "List[a]")
-    registerFn("runtime/dict_of",   "dict",       "a, b -> Dict[a, b]")
-    registerFn("runtime/extend",    "extend",     "a, b, Dict[a, b] -> Dict[a, b]")
-    registerFn("runtime/typeof",    "typeof",     "a -> List[Str]")
+    registerFn("runtime/Dict$size", "Dict$size",  "Dict[a, b] -> Int")
 
-    registerFn("eq", "a+Eq, a -> Bool")
     registerOverride("runtime/Int$eq",   "eq", "Int, Int -> Bool")
     registerOverride("runtime/Float$eq", "eq", "Float, Float -> Bool")
     registerOverride("runtime/Str$eq",   "eq", "Str, Str -> Bool")
     registerOverride("runtime/Bool$eq", "eq", "Bool, Bool -> Bool")
 
-    registerFn("size", "a+Set[b] -> Int")
     registerOverride("runtime/List$size", "size", "List[x] -> Int")
     registerOverride("runtime/Dict$size", "size", "Dict[a, b] -> Int")
-
-    registerInterface("Set", List("size"))
-    registerInterface("Eq", List("eq"))
 
     env
   }
@@ -226,9 +201,9 @@ object Main {
   }
 
   /*
-   * Build the initial code representation
+   * Builds a NModule from a source file
    */
-  def stageZero(filename: String, code: String, env: Env, runtime: Runtime) : NModule = {
+  def parseFile(filename: String, code: String) : NModule = {
     // Build the CST
     val lexer = new GrammarLexer(new ANTLRInputStream(code))
     val parser = new GrammarParser(new CommonTokenStream(lexer))
@@ -241,7 +216,16 @@ object Main {
     module.main.name = "main"
     
     // show(module.main, code)
-    
+    module
+  }
+
+
+  /*
+   * Build the initial code representation
+   */
+  def stageZero(filename: String, code: String, env: Env, runtime: Runtime) : NModule = {
+    val module = parseFile(filename, code)
+
     // Imports
     module.imports.foreach {
       case (pack, fname) =>
@@ -323,7 +307,7 @@ object Main {
   class stageType(env: Env, code: String) extends Function1[NModule, NModule] {
     def apply(module: NModule) = {
       module.main.fwdty = Tyfn(List(), Tyvar("a", List()))
-      Typer3.getType(env, module)
+      Typer3.getType(env, module.main, module)
       //show(module.main, code)
       module
     }

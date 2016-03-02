@@ -153,9 +153,13 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   }
   
   override def visitForward(ctx: GrammarParser.ForwardContext) = {
-    val name = ctx.ID().getText
+    val name = ctx.id.getText
     val gty = getTy(ctx.ty)
-    fill(NForward(name, gty), ctx)
+    val natid =
+      if (ctx.nat == null) None
+      else if (ctx.natid == null) Some(name)
+      else Some(ctx.natid.getText)
+    fill(NForward(name, gty, natid), ctx)
   }
 
   override def visitList(ctx: GrammarParser.ListContext) = {
@@ -213,10 +217,11 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
   }
 
   override def visitInterf(ctx: InterfContext) = {
-    def name = ctx.CLASSID().getText
-    def tys = ctx.tydef().asScala.toList.map(getTy)
-    def forwards = ctx.forward().asScala.toList.map(visitForward)
-    fill(NInterface(name, tys, forwards), ctx)
+    val name = ctx.CLASSID().getText
+    val tys = ctx.tydef().asScala.toList.map(getTy)
+    val forwards = ctx.forward().asScala.toList.map(visitForward)
+    val supers = ctx.klassparent().asScala.toList.map(getTy)
+    fill(NInterface(name, tys, supers, forwards), ctx)
   }
 }
 

@@ -7,7 +7,7 @@ public class List extends Thing {
 	
 	public List(Thing head) {
 		this.head = head;
-		this.tail = new Nil();
+		this.tail = new nil();
 	}
 	
 	public List(Thing head, List tail) {
@@ -16,7 +16,7 @@ public class List extends Thing {
 	}
 	
 	public String myrepr() {
-		return head + (tail instanceof Nil ? "" : ", " + tail.myrepr());
+		return head + (tail instanceof nil ? "" : ", " + tail.myrepr());
 	}
 	
 	@Override
@@ -28,7 +28,7 @@ public class List extends Thing {
 		@Override
 		public Thing apply1(Thing a) {
 			List l = (List)a;
-			int i = 0; // the last element is Nil
+			int i = 0; // the last element is nil
 			while (l.tail != null) {
 				l = l.tail;
 				i++;

@@ -66,11 +66,11 @@ cond
     ;
 
 forward
-    : ID ':' ty=tydef
+    : (nat='native')? id=ID ('(' natid=ID ')')? ':' ty=tydef
     ;
 
 tydef
-    : CLASSID | ID ('+' tydef)* | tydef '[' tydef (',' tydef)* ']' | tydef '->' tydef | tydef ',' tydef '->' tydef  | '(' tydef ')'
+    : CLASSID | ID ('+' tydef)* | tydef '[' tydef (',' tydef)* ']' | tydef (',' tydef)* '->' tydef  | '(' tydef ')'
     ;
 
 list
@@ -102,7 +102,7 @@ instantiation
     ;
 
 interf
-    : 'interface' CLASSID ('[' tydef (',' tydef)* ']')? '{' forward* '}'
+    : 'interface' CLASSID ('[' tydef (',' tydef)* ']')? ('is' klassparent (',' klassparent)*)? ('{' forward* '}')?
     ;
 
 match
@@ -136,4 +136,12 @@ STRING
 
 WS
     : [ \t\r\n]+ -> skip
+    ;
+
+COMMENT
+    : '/*' ~[/]* '*/' -> skip
+    ;
+
+COMMENT2
+    :'//' .* '\n' -> skip
     ;

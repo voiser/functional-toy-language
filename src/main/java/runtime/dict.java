@@ -1,6 +1,6 @@
 package runtime;
 
-public class dict_of extends Func {
+public class dict extends Func {
 
 	@Override
 	public Thing apply2(Thing key, Thing value) {

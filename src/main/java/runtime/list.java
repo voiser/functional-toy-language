@@ -1,8 +1,8 @@
 package runtime;
 
-public class list_of extends Func {
+public class list extends Func {
 
-	private static Nil nil = new Nil();
+	private static nil nil = new nil();
 	
 	@Override
 	public Thing apply1(Thing a) {
