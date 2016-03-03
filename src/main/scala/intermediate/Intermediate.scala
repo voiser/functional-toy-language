@@ -360,14 +360,23 @@ object Intermediate {
     case NDef(name, v : NInt) => Nop()
     case NDef(name, v : NFloat) => Nop()
     case NDef(name, v : NString) => Nop()
-    case NDef(name, v : NRef) => Nop()
+    //case NDef(name, v : NRef) => Nop()
     case NDef(name, v : NFn) => Nop()
     case NDef(name, v : NBool) => Nop()
     case x : NForward => Nop()
     
+    case NDef(name, v : NRef) =>
+      val local = flocal(name, allLocals)
+      val what = translate(unit, function, allLocals, externs, captures, v)
+      what match {
+        case x : Constant => Nop()
+        case _ => StoreLocal(local, name, what)
+      }
+
     case NDef(name, v) =>
       val local = flocal(name, allLocals)
-      StoreLocal(local, name, translate(unit, function, allLocals, externs, captures, v))
+      val what = translate(unit, function, allLocals, externs, captures, v)
+      StoreLocal(local, name, what)
           
     case x @ NRef(name) =>
       x.over match {
@@ -376,7 +385,10 @@ object Intermediate {
             case Some((name, _, i)) => Local(i)
             case None => captures.find(_.name == x.name) match {
               case Some(CreateCapture(name, ty)) => Capture(name)
-              case None => Constant(name)
+              case None => externs.find(_.name == x.name) match {
+                case Some(e) => Extern(name)
+                case None => Constant(name)
+              }
             } 
           }
           

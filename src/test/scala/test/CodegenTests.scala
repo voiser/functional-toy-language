@@ -50,7 +50,8 @@ class CodegenTests extends FunSuite {
     val code = """
       module test
 
-      1 == 2
+      a = 1 + (2 * 3) - (4 / 2)
+      a
 
       """
     val ret = intermediate("test", code, runtime)

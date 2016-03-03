@@ -32,6 +32,29 @@ class BasicTests extends FunSuite {
     assert ("3" == ret.toString())
   }
 
+  test ("1 + 2 = 3 with references") {
+    val code = """
+      a = 1
+      b = 2
+      c = add
+      c(a, b)
+      """
+    val ret = run(code)
+    assert ("3" == ret.toString())
+  }
+
+  test ("1 + 2 = 3 returning references") {
+    val code = """
+      a = 1
+      b = 2
+      c = { add }
+      d = c()
+      d(a, b)
+      """
+    val ret = run(code)
+    assert ("3" == ret.toString())
+  } 
+
   test ("Create a list") {
     val code = """
       cons(1, list(2))
