@@ -92,6 +92,11 @@ class Transformer {
     NMatch(visit(n.source), n.pattern, visit(n.exptrue), visit(n.expfalse))
   }
 
+  def visitNAnonapply(n: NAnonapply): Node = {
+    val params = n.params.map { x => visit(x) }
+    NAnonapply(visit(n.func).asInstanceOf[NFn], params)
+  }
+
   def visit(n: Node) : Node = {
     n match {
       
@@ -136,6 +141,9 @@ class Transformer {
 
       case x : NMatch =>
         fill(n, visitNMatch(x))
+
+      case x : NAnonapply =>
+        fill(n, visitNAnonapply(x))
 
       case _ =>
         n
@@ -388,7 +396,7 @@ class MatchVarsTransformer(module: NModule) extends Transformer {
   }
 
   override def visitNMatch(n: NMatch): Node = {
-    val prefix = "$m$" + nmatches
+    val prefix = "$$m$$" + nmatches
     nmatches = nmatches + 1
     val subs = new MatchVarsExtractor(n).varnames.map { v => (v, prefix + "_" + v) }.toMap
     def substitute(p: Pattern, subs: Map[String, String]) : Pattern = p match {
@@ -398,6 +406,32 @@ class MatchVarsTransformer(module: NModule) extends Transformer {
     val newpattern = substitute(n.pattern, subs)
     val newexp = new VarSubstitutor(n.exptrue, subs).apply()
     fill(n, NMatch(n.source, newpattern, newexp, n.expfalse))
+  }
+}
+
+
+
+
+class AnonapplyTransformer(module: NModule) extends Transformer {
+
+  var nanons = 0
+
+  val anons = mutable.MutableList[(NBlock, Node)]()
+
+  def apply() = visit(module).asInstanceOf[NModule]
+
+  override def visitNBlock(b: NBlock) : Node = {
+    val r = super.visitNBlock(b).asInstanceOf[NBlock]
+    val ndefs = anons.filter { pair => pair._1 == b } .map { pair => pair._2 }.toList
+    fill(b, NBlock(ndefs ++ r.children))
+  }
+
+  override def visitNAnonapply(n: NAnonapply): Node = {
+    nanons = nanons + 1
+    val newname = "$$aapp$$" + nanons
+    val ndef = fill(n, NDef(newname, super.visit(n.func)))
+    anons.+=((n.defblock, ndef))
+    visit(NApply(newname, n.params))
   }
 }
 

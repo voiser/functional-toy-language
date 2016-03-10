@@ -300,6 +300,17 @@ object Main {
     }
   }
 
+  
+  class stageTransformAnonapplies(env: Env, code: String) extends Function1[NModule, NModule] {
+    def apply(module: NModule) = {
+      //show(module.main, code)
+      new Blocker(module.main.value)
+      val ret1 = new AnonapplyTransformer(module).apply()
+      //show(ret1.main, code)
+      ret1
+    }
+  }
+
 
   /*
    * Type the AST
@@ -411,6 +422,7 @@ object Main {
     val env = rootEnv
     val stages = List(
         new stageTransformMatches(env, code),
+        new stageTransformAnonapplies(env, code),
         new stageType(env, code),
         new stageCheckInterfaces(env, code),
         new stageObjectStyle(env, code),
@@ -502,6 +514,11 @@ object Main {
           show0(source, d+1)
           show0(exptrue, d+1)
           show0(expfalse, d+1)
+
+        case x @ NAnonapply(f, params) =>
+          rep("Anonapply")
+          show0(f, d+1)
+          params.foreach { x => show0(x, d+1) }
 
         case _ =>
           rep(n.toString())

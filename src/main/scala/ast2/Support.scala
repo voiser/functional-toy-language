@@ -48,6 +48,7 @@ abstract class Node {
   var ctx: ParserRuleContext = null
   var ty: Ty = null
   var env: Env = null
+  var defblock: NBlock = null
   def line = if (ctx == null) 0 else ctx.start.getLine
   def column = if (ctx == null) 0 else ctx.start.getCharPositionInLine
   def charsize = if (ctx == null) 0 else ctx.getText.length() + 1
@@ -99,6 +100,7 @@ case class NField(owner: Node, field: String) extends Node {
 }
 case class NMatch(source: Node, pattern: Pattern, exptrue: Node, expfalse: Node) extends Node
 case class NInterface(name: String, typarams: List[GTy], is: List[GTy], defs: List[NForward]) extends Node
+case class NAnonapply(func: NFn, params: List[Node]) extends Node
 
 /**
  * A type class and its members

@@ -102,6 +102,12 @@ class FirstVisitor(filename: String) extends GrammarBaseVisitor[Node] {
     fill(NApply(fname, params), ctx)
   }
 
+  override def visitAnonapply(ctx: GrammarParser.AnonapplyContext) = {
+    val func = visitFn(ctx.fn()).asInstanceOf[NFn]
+    val params= ctx.expression().asScala.toList map visitExpression
+    fill(NAnonapply(func, params), ctx)
+  }
+
   override def visitRef(ctx: GrammarParser.RefContext) = {
     val ident = ctx.ID.getText
     fill(NRef(ident), ctx)

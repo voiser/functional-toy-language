@@ -305,4 +305,21 @@ class BasicTests extends FunSuite {
     val ret = run(code)
     assert("[OK, KO]" == ret.toString())
   }
+
+  test("Anonapply") {
+    val code = """
+      { x => x + 1 } (1)
+      """
+    val ret = run(code)
+    assert("2" == ret.toString())
+  }
+
+  test("Anonapply and captures") {
+    val code = """
+      a = {z => {x=>x}({x=>x+z})}(8)
+      a(1)
+      """
+    val ret = run(code)
+  }
+
 }

@@ -14,8 +14,9 @@ block
 
 expression
     : value
-    | fn
     | apply
+    | anonapply
+    | fn
     | ref
     | cond
     | match
@@ -55,6 +56,11 @@ fnargpair
 apply
     : ID '(' ')'
     | ID '(' expression ( ',' expression )* ')'
+    ;
+
+anonapply
+    : fn '(' ')'
+    | fn '(' expression ( ',' expression )* ')'
     ;
 
 ref
@@ -143,5 +149,5 @@ COMMENT
     ;
 
 COMMENT2
-    :'//' .* '\n' -> skip
+    :'//' .*? '\n' -> skip
     ;

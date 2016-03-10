@@ -57,6 +57,9 @@ class Visitor {
   def visitNMatch(n: NMatch) {
   }
 
+  def visitNAnonapply(n: NAnonapply) {
+  }
+
   def visit(n: NFn): Unit = {
     visitNFn(n)
     visit(n.value)
@@ -129,6 +132,12 @@ class Visitor {
     visit(n.expfalse)
   }
 
+  def visit(n: NAnonapply): Unit = {
+    visitNAnonapply(n)
+    visit(n.func)
+    n.params.foreach { x => visit(x) }
+  }
+
   def visit(n: Node) : Unit = {
     n match {
       
@@ -172,6 +181,9 @@ class Visitor {
         visit(x)
 
       case x : NMatch =>
+        visit(x)
+
+      case x : NAnonapply =>
         visit(x)
 
       case _ =>    
@@ -551,3 +563,19 @@ class MatchVarsExtractor(root: Node) extends Visitor {
     super.visitNMatch(n)
   }
 }
+
+
+
+class Blocker(root: NBlock) extends Visitor {
+
+  root.children.foreach { c => visit(c) }
+
+  override def visitNBlock(n: NBlock) {
+    new Blocker(n)
+  }
+
+  override def visitNAnonapply(n: NAnonapply) {
+    n.defblock = root
+  }
+}
+

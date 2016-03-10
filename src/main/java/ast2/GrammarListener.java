@@ -88,6 +88,16 @@ public interface GrammarListener extends ParseTreeListener {
 	 */
 	void exitApply(GrammarParser.ApplyContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link GrammarParser#anonapply}.
+	 * @param ctx the parse tree
+	 */
+	void enterAnonapply(GrammarParser.AnonapplyContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link GrammarParser#anonapply}.
+	 * @param ctx the parse tree
+	 */
+	void exitAnonapply(GrammarParser.AnonapplyContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link GrammarParser#ref}.
 	 * @param ctx the parse tree
 	 */
