@@ -535,7 +535,7 @@ object Codegen {
     }
     cw.visitEnd()
     cw.toByteArray()
-    
+
     (module.name, f.name, cw.toByteArray())
   }
 

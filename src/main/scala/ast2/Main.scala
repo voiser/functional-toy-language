@@ -1,8 +1,12 @@
 package ast2
 
+import java.io.{File, FileOutputStream}
+
+import intermediate.Intermediate
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime._
 import runtime.Export
+
 import scala.collection.JavaConverters._
 
 object Main {
@@ -454,6 +458,38 @@ object Main {
    */
   def main(args: Array[String]) {
 
+    def options(map: Map[String, String], args: List[String]): Map[String, String] = args match {
+      case List() => map
+      case "-o" :: output :: rest =>  options(map ++ Map(("output", output)), rest)
+      case "-cp" :: classpath :: rest => options(map ++ Map(("classpath", classpath)), rest)
+      case input :: rest => options(map ++ Map(("input", input)), rest)
+    }
+
+    val opts = options(Map(), args.toList)
+
+    if (opts.contains("output") && opts.contains("input")) {
+      val output = opts("output")
+      val filename = opts("input")
+      val code = scala.io.Source.fromFile(filename).mkString
+      val unit = process(new File(filename).getName, code)
+      val module = Intermediate.codegen(unit)
+      val bytes = Codegen.codegen(module)
+      bytes.foreach { triple =>
+        val pack = triple._1
+        val name = triple._2
+        val bytes = triple._3
+        val destination = new File(output, pack)
+        destination.mkdirs()
+        println("Writing file " + name + ".class")
+        val f = new FileOutputStream(new File(destination, name + ".class"))
+        f.write(bytes)
+        f.close()
+      }
+    }
+    else {
+        println("Usage: ")
+        println("java -jar ... -o (output dir) file")
+    }
   }
  
   /*

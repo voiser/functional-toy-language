@@ -519,6 +519,6 @@ object Intermediate {
     }
     val exports = genExports(unit)
 
-    CreateModule(unit.filename, functions, classes, exports)
+    CreateModule(unit.module.name, functions, classes, exports)
   }
 }
