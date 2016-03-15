@@ -1,7 +1,7 @@
 
 sbt=./sbt/bin/sbt
 
-all: test package
+all: package
 
 test:
 	${sbt} test
